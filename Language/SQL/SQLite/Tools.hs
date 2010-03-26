@@ -14,12 +14,12 @@ import Language.SQL.SQLite.Syntax
 import Language.SQL.SQLite.Types
 
 changeTableSchema
-    :: (Statement L0 NT NS)
-    -> (Statement L0 NT NS)
+    :: CreateTable
+    -> CreateTable
     -> (Map UnqualifiedIdentifier Expression)
     -> StatementList
 changeTableSchema oldDefinition newDefinition columnDefaultMap
-    = let tableColumnNames :: (Statement L0 NT NS) -> Set UnqualifiedIdentifier
+    = let tableColumnNames :: CreateTable -> Set UnqualifiedIdentifier
           tableColumnNames (CreateTable _ _ _ (ColumnsAndConstraints columns _))
               = Set.fromList $ map columnDefinitionName $ fromOneOrMore columns
           columnDefinitionName (ColumnDefinition name _ _) = name
@@ -28,7 +28,7 @@ changeTableSchema oldDefinition newDefinition columnDefaultMap
           removedColumns = Set.difference oldColumns newColumns
           addedColumns = Set.difference newColumns oldColumns
           preservedColumns = Set.intersection oldColumns newColumns
-          tableName :: (Statement L0 NT NS) -> SinglyQualifiedIdentifier
+          tableName :: CreateTable -> SinglyQualifiedIdentifier
           tableName (CreateTable _ _ name _) = name
           oldName = tableName oldDefinition
           newName = tableName newDefinition

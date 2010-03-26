@@ -1335,35 +1335,35 @@ ExplainableStatement :: { ExplainableStatement }
     | Vacuum
     { ExplainableStatement $1 }
 
-Explain :: { Statement L1 NT NS }
+Explain :: { Explain }
     : explain ExplainableStatement
     { Explain $2 }
 
-ExplainQueryPlan :: { Statement L1 NT NS }
+ExplainQueryPlan :: { ExplainQueryPlan }
     : explain query plan ExplainableStatement
     { ExplainQueryPlan $4 }
 
-AlterTable :: { Statement L0 NT NS }
+AlterTable :: { AlterTable }
     : alter table SinglyQualifiedIdentifier AlterTableBody
     { AlterTable $3 $4 }
 
-Analyze :: { Statement L0 NT NS }
+Analyze :: { Analyze }
     : analyze SinglyQualifiedIdentifier
     { Analyze $2 }
 
-Attach :: { Statement L0 NT NS }
+Attach :: { Attach }
     : attach string as UnqualifiedIdentifier
     { Attach False $2 $4 }
     | attach database string as UnqualifiedIdentifier
     { Attach True $3 $5 }
 
-Begin :: { Statement L0 NT NS }
+Begin :: { Begin }
     : begin MaybeTransactionType
     { Begin $2 False }
     | begin MaybeTransactionType transaction
     { Begin $2 True }
 
-Commit :: { Statement L0 NT NS }
+Commit :: { Commit }
     : commit
     { Commit False False }
     | commit transaction
@@ -1373,36 +1373,36 @@ Commit :: { Statement L0 NT NS }
     | end transaction
     { Commit True True}
 
-CreateIndex :: { Statement L0 NT NS }
+CreateIndex :: { CreateIndex }
     : create MaybeUnique index MaybeIfNotExists SinglyQualifiedIdentifier on
       UnqualifiedIdentifier '(' OneOrMoreIndexedColumn ')'
     { CreateIndex $2 $4 $5 $7 (fromJust $ mkOneOrMore $9) }
 
-CreateTable :: { Statement L0 NT NS }
+CreateTable :: { CreateTable }
     : create Permanence table MaybeIfNotExists SinglyQualifiedIdentifier
       EitherColumnsAndConstraintsSelect
     { CreateTable $2 $4 $5 $6 }
 
-CreateTrigger :: { Statement L0 NT NS }
+CreateTrigger :: { CreateTrigger }
     : create Permanence trigger MaybeIfNotExists SinglyQualifiedIdentifier
       TriggerTime TriggerCondition UnqualifiedIdentifier MaybeForEachRow
       MaybeWhenClause begin OneOrMoreTriggerStatement ';' end
     { CreateTrigger $2 $4 $5 $6 $7 $8 $9 $10 (fromJust $ mkOneOrMore $12) }
 
-CreateView :: { Statement L0 NT NS }
+CreateView :: { CreateView }
     : create Permanence view MaybeIfNotExists SinglyQualifiedIdentifier as Select
     { CreateView $2 $4 $5 $7 }
 
--- CreateVirtualTable :: { Statement L0 NT NS }
+-- CreateVirtualTable :: { CreateVirtualTable }
 --     :
 --     { }
 -- TODO definition (requires monadic parser)
 
-Delete :: { Statement L0 T NS }
+Delete :: { Delete }
     : delete from QualifiedTableName MaybeWhereClause
     { Delete $3 $4 }
 
-DeleteLimited :: { Statement L0 NT NS }
+DeleteLimited :: { DeleteLimited }
     : delete from QualifiedTableName MaybeWhereClause MaybeOrderClause LimitClause
     { DeleteLimited $3 $4 $5 $6 }
 
@@ -1412,47 +1412,47 @@ DeleteOrDeleteLimited :: { AnyStatement }
     | DeleteLimited
     { Statement $1 }
 
-Detach :: { Statement L0 NT NS }
+Detach :: { Detach }
     : detach UnqualifiedIdentifier
     { Detach False $2 }
     | detach database UnqualifiedIdentifier
     { Detach True $3 }
 
-DropIndex :: { Statement L0 NT NS }
+DropIndex :: { DropIndex }
     : drop index MaybeIfExists SinglyQualifiedIdentifier
     { DropIndex $3 $4 }
 
-DropTable :: { Statement L0 NT NS }
+DropTable :: { DropTable }
     : drop table MaybeIfExists SinglyQualifiedIdentifier
     { DropTable $3 $4 }
 
-DropTrigger :: { Statement L0 NT NS }
+DropTrigger :: { DropTrigger }
     : drop trigger MaybeIfExists SinglyQualifiedIdentifier
     { DropTrigger $3 $4 }
 
-DropView :: { Statement L0 NT NS }
+DropView :: { DropView }
     : drop view MaybeIfExists SinglyQualifiedIdentifier
     { DropView $3 $4 }
 
-Insert :: { Statement L0 T NS }
+Insert :: { Insert }
     : InsertHead into SinglyQualifiedIdentifier InsertBody
     { Insert $1 $3 $4 }
 
-Pragma :: { Statement L0 NT NS }
+Pragma :: { Pragma }
     : pragma SinglyQualifiedIdentifier PragmaBody
     { Pragma $2 $3 }
 
-Reindex :: { Statement L0 NT NS }
+Reindex :: { Reindex }
     : reindex SinglyQualifiedIdentifier
     { Reindex $2 }
 
-Release :: { Statement L0 NT NS }
+Release :: { Release }
     : release UnqualifiedIdentifier
     { Release False $2 }
     | release savepoint UnqualifiedIdentifier
     { Release True $3 }
 
-Rollback :: { Statement L0 NT NS }
+Rollback :: { Rollback }
     : rollback
     { Rollback False Nothing }
     | rollback transaction
@@ -1466,19 +1466,19 @@ Rollback :: { Statement L0 NT NS }
     | rollback transaction to savepoint UnqualifiedIdentifier
     { Rollback True (Just (True, $5)) }
 
-Savepoint :: { Statement L0 NT NS }
+Savepoint :: { Savepoint }
     : savepoint UnqualifiedIdentifier
     { Savepoint $2 }
 
-Select :: { Statement L0 T S }
+Select :: { Select }
     : SelectCore SelectCoreList MaybeOrderClause MaybeLimitClause
     { Select $1 $2 $3 $4 }
 
-Update :: { Statement L0 T NS }
+Update :: { Update }
     : UpdateHead QualifiedTableName set OneOrMoreSetPair MaybeWhereClause
     { Update $1 $2 (fromJust $ mkOneOrMore $4) $5 }
 
-UpdateLimited :: { Statement L0 NT NS }
+UpdateLimited :: { UpdateLimited }
     : UpdateHead QualifiedTableName set OneOrMoreSetPair MaybeWhereClause
       MaybeOrderClause LimitClause
     { UpdateLimited $1 $2 (fromJust $ mkOneOrMore $4) $5 $6 $7 }
@@ -1489,7 +1489,7 @@ UpdateOrUpdateLimited :: { AnyStatement }
     | UpdateLimited
     { Statement $1 }
 
-Vacuum :: { Statement L0 NT NS }
+Vacuum :: { Vacuum }
     : vacuum
     { Vacuum }
 
@@ -1806,61 +1806,61 @@ readExplainableStatement :: String -> Either ParseError ExplainableStatement
 readExplainableStatement input = runParse parseExplainableStatement input
 
 
-readExplain :: String -> Either ParseError (Statement L1 NT NS)
+readExplain :: String -> Either ParseError Explain
 readExplain input = runParse parseExplain input
 
 
-readExplainQueryPlan :: String -> Either ParseError (Statement L1 NT NS)
+readExplainQueryPlan :: String -> Either ParseError ExplainQueryPlan
 readExplainQueryPlan input = runParse parseExplainQueryPlan input
 
 
-readAlterTable :: String -> Either ParseError (Statement L0 NT NS)
+readAlterTable :: String -> Either ParseError AlterTable
 readAlterTable input = runParse parseAlterTable input
 
 
-readAnalyze :: String -> Either ParseError (Statement L0 NT NS)
+readAnalyze :: String -> Either ParseError Analyze
 readAnalyze input = runParse parseAnalyze input
 
 
-readAttach :: String -> Either ParseError (Statement L0 NT NS)
+readAttach :: String -> Either ParseError Attach
 readAttach input = runParse parseAttach input
 
 
-readBegin :: String -> Either ParseError (Statement L0 NT NS)
+readBegin :: String -> Either ParseError Begin
 readBegin input = runParse parseBegin input
 
 
-readCommit :: String -> Either ParseError (Statement L0 NT NS)
+readCommit :: String -> Either ParseError Commit
 readCommit input = runParse parseCommit input
 
 
-readCreateIndex :: String -> Either ParseError (Statement L0 NT NS)
+readCreateIndex :: String -> Either ParseError CreateIndex
 readCreateIndex input = runParse parseCreateIndex input
 
 
-readCreateTable :: String -> Either ParseError (Statement L0 NT NS)
+readCreateTable :: String -> Either ParseError CreateTable
 readCreateTable input = runParse parseCreateTable input
 
 
-readCreateTrigger :: String -> Either ParseError (Statement L0 NT NS)
+readCreateTrigger :: String -> Either ParseError CreateTrigger
 readCreateTrigger input = runParse parseCreateTrigger input
 
 
-readCreateView :: String -> Either ParseError (Statement L0 NT NS)
+readCreateView :: String -> Either ParseError CreateView
 readCreateView input = runParse parseCreateView input
 
 
 {- TODO remember to uncomment this
-readCreateVirtualTable :: String -> Either ParseError (Statement L0 NT NS)
+readCreateVirtualTable :: String -> Either ParseError CreateVirtualTable
 readCreateVirtualTable input = runParse parseCreateVirtualTable input
 -}
 
 
-readDelete :: String -> Either ParseError (Statement L0 T NS)
+readDelete :: String -> Either ParseError Delete
 readDelete input = runParse parseDelete input
 
 
-readDeleteLimited :: String -> Either ParseError (Statement L0 NT NS)
+readDeleteLimited :: String -> Either ParseError DeleteLimited
 readDeleteLimited input = runParse parseDeleteLimited input
 
 
@@ -1868,59 +1868,59 @@ readDeleteOrDeleteLimited :: String -> Either ParseError AnyStatement
 readDeleteOrDeleteLimited input = runParse parseDeleteOrDeleteLimited input
 
 
-readDetach :: String -> Either ParseError (Statement L0 NT NS)
+readDetach :: String -> Either ParseError Detach
 readDetach input = runParse parseDetach input
 
 
-readDropIndex :: String -> Either ParseError (Statement L0 NT NS)
+readDropIndex :: String -> Either ParseError DropIndex
 readDropIndex input = runParse parseDropIndex input
 
 
-readDropTable :: String -> Either ParseError (Statement L0 NT NS)
+readDropTable :: String -> Either ParseError DropTable
 readDropTable input = runParse parseDropTable input
 
 
-readDropTrigger :: String -> Either ParseError (Statement L0 NT NS)
+readDropTrigger :: String -> Either ParseError DropTrigger
 readDropTrigger input = runParse parseDropTrigger input
 
 
-readDropView :: String -> Either ParseError (Statement L0 NT NS)
+readDropView :: String -> Either ParseError DropView
 readDropView input = runParse parseDropView input
 
 
-readInsert :: String -> Either ParseError (Statement L0 T NS)
+readInsert :: String -> Either ParseError Insert
 readInsert input = runParse parseInsert input
 
 
-readPragma :: String -> Either ParseError (Statement L0 NT NS)
+readPragma :: String -> Either ParseError Pragma
 readPragma input = runParse parsePragma input
 
 
-readReindex :: String -> Either ParseError (Statement L0 NT NS)
+readReindex :: String -> Either ParseError Reindex
 readReindex input = runParse parseReindex input
 
 
-readRelease :: String -> Either ParseError (Statement L0 NT NS)
+readRelease :: String -> Either ParseError Release
 readRelease input = runParse parseRelease input
 
 
-readRollback :: String -> Either ParseError (Statement L0 NT NS)
+readRollback :: String -> Either ParseError Rollback
 readRollback input = runParse parseRollback input
 
 
-readSavepoint :: String -> Either ParseError (Statement L0 NT NS)
+readSavepoint :: String -> Either ParseError Savepoint
 readSavepoint input = runParse parseSavepoint input
 
 
-readSelect :: String -> Either ParseError (Statement L0 T S)
+readSelect :: String -> Either ParseError Select
 readSelect input = runParse parseSelect input
 
 
-readUpdate :: String -> Either ParseError (Statement L0 T NS)
+readUpdate :: String -> Either ParseError Update
 readUpdate input = runParse parseUpdate input
 
 
-readUpdateLimited :: String -> Either ParseError (Statement L0 NT NS)
+readUpdateLimited :: String -> Either ParseError UpdateLimited
 readUpdateLimited input = runParse parseUpdateLimited input
 
 
@@ -1928,7 +1928,7 @@ readUpdateOrUpdateLimited :: String -> Either ParseError AnyStatement
 readUpdateOrUpdateLimited input = runParse parseUpdateOrUpdateLimited input
 
 
-readVacuum :: String -> Either ParseError (Statement L0 NT NS)
+readVacuum :: String -> Either ParseError Vacuum
 readVacuum input = runParse parseVacuum input
 
 

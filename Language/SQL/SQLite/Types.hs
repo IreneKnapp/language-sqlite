@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs, EmptyDataDecls, FlexibleInstances, ExistentialQuantification,
-             StandaloneDeriving #-}
+             StandaloneDeriving, TypeSynonymInstances #-}
 module Language.SQL.SQLite.Types (
                                   ShowTokens(..),
                                   OneOrMore,
@@ -68,13 +68,36 @@ module Language.SQL.SQLite.Types (
                                   fromExplainableStatement,
                                   TriggerStatement(..),
                                   fromTriggerStatement,
-                                  L0,
-                                  L1,
-                                  NT,
-                                  T,
-                                  NS,
-                                  S,
                                   Statement(..),
+                                  Explain,
+                                  ExplainQueryPlan,
+                                  AlterTable,
+                                  Analyze,
+                                  Attach,
+                                  Begin,
+                                  Commit,
+                                  CreateIndex,
+                                  CreateTable,
+                                  CreateTrigger,
+                                  CreateView,
+                                  CreateVirtualTable,
+                                  Delete,
+                                  DeleteLimited,
+                                  Detach,
+                                  DropIndex,
+                                  DropTable,
+                                  DropTrigger,
+                                  DropView,
+                                  Insert,
+                                  Pragma,
+                                  Reindex,
+                                  Release,
+                                  Rollback,
+                                  Savepoint,
+                                  Select,
+                                  Update,
+                                  UpdateLimited,
+                                  Vacuum,
                                   Identifier(..),
                                   toDoublyQualifiedIdentifier,
                                   UnqualifiedIdentifier(..),
@@ -224,15 +247,15 @@ data Expression = ExpressionLiteralInteger Word64
                 | ExpressionIsNot Expression Expression
                 | ExpressionBetween Expression Expression Expression
                 | ExpressionNotBetween Expression Expression Expression
-                | ExpressionInSelect Expression (Statement L0 T S)
-                | ExpressionNotInSelect Expression (Statement L0 T S)
+                | ExpressionInSelect Expression (Select)
+                | ExpressionNotInSelect Expression (Select)
                 | ExpressionInList Expression [Expression]
                 | ExpressionNotInList Expression [Expression]
                 | ExpressionInTable Expression SinglyQualifiedIdentifier
                 | ExpressionNotInTable Expression SinglyQualifiedIdentifier
-                | ExpressionSubquery (Statement L0 T S)
-                | ExpressionExistsSubquery (Statement L0 T S)
-                | ExpressionNotExistsSubquery (Statement L0 T S)
+                | ExpressionSubquery (Select)
+                | ExpressionExistsSubquery (Select)
+                | ExpressionNotExistsSubquery (Select)
                 | ExpressionCase (Maybe Expression)
                                  (OneOrMore (Expression, Expression))
                                  (Maybe Expression)
@@ -827,7 +850,7 @@ instance ShowTokens PragmaValue where
 
 data EitherColumnsAndConstraintsSelect
     = ColumnsAndConstraints (OneOrMore ColumnDefinition) [TableConstraint]
-    | AsSelect (Statement L0 T S)
+    | AsSelect (Select)
       deriving (Eq, Show)
 instance ShowTokens EitherColumnsAndConstraintsSelect where
     showTokens (ColumnsAndConstraints columns constraints)
@@ -858,7 +881,7 @@ instance ShowTokens InsertHead where
     showTokens Replace = [KeywordReplace]
 
 data InsertBody = InsertValues [UnqualifiedIdentifier] (OneOrMore Expression)
-                | InsertSelect [UnqualifiedIdentifier] (Statement L0 T S)
+                | InsertSelect [UnqualifiedIdentifier] (Select)
                 | InsertDefaultValues
                   deriving (Eq, Show)
 instance ShowTokens InsertBody where
@@ -978,7 +1001,7 @@ instance ShowTokens JoinSource where
 data SingleSource = TableSource SinglyQualifiedIdentifier
                                 MaybeAs
                                 MaybeIndexedBy
-                  | SelectSource (Statement L0 T S)
+                  | SelectSource (Select)
                                  MaybeAs
                   | SubjoinSource JoinSource
                     deriving (Eq, Show)
@@ -1196,7 +1219,7 @@ instance ShowTokens StatementList where
     showTokens (StatementList list) =
         intercalate [PunctuationSemicolon] $ map showTokens list
 
-data AnyStatement = forall l t v . Statement (Statement l t v)
+data AnyStatement = forall l t v w . Statement (Statement l t v w)
 instance Eq AnyStatement where
     a@(Statement (Explain _))
          == b@(Statement (Explain _))
@@ -1295,97 +1318,159 @@ class StatementClass a where
     fromExplainableStatement :: ExplainableStatement -> a
     fromTriggerStatement :: TriggerStatement -> a
     
-instance StatementClass (Statement L1 NT NS) where
+instance StatementClass Explain where
     fromAnyStatement (Statement result@(Explain _)) = result
-    fromAnyStatement (Statement result@(ExplainQueryPlan _)) = result
-    fromAnyStatement _ = undefined
     fromExplainableStatement _ = undefined
-    fromTriggerStatement _ = undefined
-    
-instance StatementClass (Statement L0 NT NS) where
-    fromAnyStatement (Statement result@(AlterTable _ _)) = result
-    fromAnyStatement (Statement result@(Analyze _)) = result
-    fromAnyStatement (Statement result@(Attach _ _ _)) = result
-    fromAnyStatement (Statement result@(Begin _ _)) = result
-    fromAnyStatement (Statement result@(Commit _ _)) = result
-    fromAnyStatement (Statement result@(CreateIndex _ _ _ _ _)) = result
-    fromAnyStatement (Statement result@(CreateTable _ _ _ _)) = result
-    fromAnyStatement (Statement result@(CreateTrigger _ _ _ _ _ _ _ _ _)) = result
-    fromAnyStatement (Statement result@(CreateView _ _ _ _)) = result
-    fromAnyStatement (Statement result@(CreateVirtualTable _ _ _)) = result
-    fromAnyStatement (Statement result@(DeleteLimited _ _ _ _)) = result
-    fromAnyStatement (Statement result@(Detach _ _)) = result
-    fromAnyStatement (Statement result@(DropIndex _ _)) = result
-    fromAnyStatement (Statement result@(DropTable _ _)) = result
-    fromAnyStatement (Statement result@(DropTrigger _ _)) = result
-    fromAnyStatement (Statement result@(DropView _ _)) = result
-    fromAnyStatement (Statement result@(Pragma _ _)) = result
-    fromAnyStatement (Statement result@(Reindex _)) = result
-    fromAnyStatement (Statement result@(Rollback _ _)) = result
-    fromAnyStatement (Statement result@(Savepoint _)) = result
-    fromAnyStatement (Statement result@(UpdateLimited _ _ _ _ _ _)) = result
-    fromAnyStatement (Statement result@(Vacuum)) = result
-    fromAnyStatement _ = undefined
-    fromExplainableStatement (ExplainableStatement result@(AlterTable _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Analyze _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Attach _ _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Begin _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Commit _ _)) = result
-    fromExplainableStatement
-      (ExplainableStatement result@(CreateIndex _ _ _ _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(CreateTable _ _ _ _)) = result
-    fromExplainableStatement
-      (ExplainableStatement result@(CreateTrigger _ _ _ _ _ _ _ _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(CreateView _ _ _ _)) = result
-    fromExplainableStatement
-      (ExplainableStatement result@(CreateVirtualTable _ _ _)) = result
-    fromExplainableStatement
-      (ExplainableStatement result@(DeleteLimited _ _ _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Detach _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(DropIndex _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(DropTable _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(DropTrigger _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(DropView _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Pragma _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Reindex _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Rollback _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Savepoint _)) = result
-    fromExplainableStatement
-      (ExplainableStatement result@(UpdateLimited _ _ _ _ _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Vacuum)) = result
-    fromExplainableStatement _ = undefined
-    fromTriggerStatement _ = undefined
-    
-instance StatementClass (Statement L0 T NS) where
-    fromAnyStatement (Statement result@(Delete _ _)) = result
-    fromAnyStatement (Statement result@(Insert _ _ _)) = result
-    fromAnyStatement (Statement result@(Update _ _ _ _)) = result
-    fromAnyStatement _ = undefined
-    fromExplainableStatement (ExplainableStatement result@(Delete _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Insert _ _ _)) = result
-    fromExplainableStatement (ExplainableStatement result@(Update _ _ _ _)) = result
-    fromExplainableStatement _ = undefined
-    fromTriggerStatement (TriggerStatement result@(Delete _ _)) = result
-    fromTriggerStatement (TriggerStatement result@(Insert _ _ _)) = result
-    fromTriggerStatement (TriggerStatement result@(Update _ _ _ _)) = result
-    fromTriggerStatement _ = undefined
-    
-instance StatementClass (Statement L0 T S) where
-    fromAnyStatement (Statement result@(Select _ _ _ _)) = result
-    fromAnyStatement _ = undefined
-    fromExplainableStatement (ExplainableStatement result@(Select _ _ _ _)) = result
-    fromExplainableStatement _ = undefined
-    fromTriggerStatement (TriggerStatement result@(Select _ _ _ _)) = result
     fromTriggerStatement _ = undefined
 
-data ExplainableStatement = forall t v . ExplainableStatement (Statement L0 t v)
+instance StatementClass ExplainQueryPlan where
+    fromAnyStatement (Statement result@(ExplainQueryPlan _)) = result
+    fromExplainableStatement _ = undefined
+    fromTriggerStatement _ = undefined
+    
+instance StatementClass AlterTable where
+    fromAnyStatement (Statement result@(AlterTable _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(AlterTable _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass Analyze where
+    fromAnyStatement (Statement result@(Analyze _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Analyze _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass Attach where
+    fromAnyStatement (Statement result@(Attach _ _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Attach _ _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass Begin where
+    fromAnyStatement (Statement result@(Begin _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Begin _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass Commit where
+    fromAnyStatement (Statement result@(Commit _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Commit _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass CreateIndex where
+    fromAnyStatement (Statement result@(CreateIndex _ _ _ _ _)) = result
+    fromExplainableStatement
+      (ExplainableStatement result@(CreateIndex _ _ _ _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass CreateTable where
+    fromAnyStatement (Statement result@(CreateTable _ _ _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(CreateTable _ _ _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass CreateTrigger where
+    fromAnyStatement (Statement result@(CreateTrigger _ _ _ _ _ _ _ _ _)) = result
+    fromExplainableStatement
+      (ExplainableStatement result@(CreateTrigger _ _ _ _ _ _ _ _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass CreateView where
+    fromAnyStatement (Statement result@(CreateView _ _ _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(CreateView _ _ _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass CreateVirtualTable where
+    fromAnyStatement (Statement result@(CreateVirtualTable _ _ _)) = result
+    fromExplainableStatement
+      (ExplainableStatement result@(CreateVirtualTable _ _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass DeleteLimited where
+    fromAnyStatement (Statement result@(DeleteLimited _ _ _ _)) = result
+    fromExplainableStatement
+      (ExplainableStatement result@(DeleteLimited _ _ _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass Detach where
+    fromAnyStatement (Statement result@(Detach _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Detach _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass DropIndex where
+    fromAnyStatement (Statement result@(DropIndex _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(DropIndex _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass DropTable where
+    fromAnyStatement (Statement result@(DropTable _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(DropTable _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass DropTrigger where
+    fromAnyStatement (Statement result@(DropTrigger _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(DropTrigger _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass DropView where
+    fromAnyStatement (Statement result@(DropView _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(DropView _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass Pragma where
+    fromAnyStatement (Statement result@(Pragma _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Pragma _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass Reindex where
+    fromAnyStatement (Statement result@(Reindex _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Reindex _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass Rollback where
+    fromAnyStatement (Statement result@(Rollback _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Rollback _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass Savepoint where
+    fromAnyStatement (Statement result@(Savepoint _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Savepoint _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass UpdateLimited where
+    fromAnyStatement (Statement result@(UpdateLimited _ _ _ _ _ _)) = result
+    fromExplainableStatement
+      (ExplainableStatement result@(UpdateLimited _ _ _ _ _ _)) = result
+    fromTriggerStatement _ = undefined
+
+instance StatementClass Vacuum where
+    fromAnyStatement (Statement result@(Vacuum)) = result
+    fromExplainableStatement (ExplainableStatement result@(Vacuum)) = result
+    fromTriggerStatement _ = undefined
+    
+instance StatementClass Delete where
+    fromAnyStatement (Statement result@(Delete _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Delete _ _)) = result
+    fromTriggerStatement (TriggerStatement result@(Delete _ _)) = result
+
+instance StatementClass Insert where
+    fromAnyStatement (Statement result@(Insert _ _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Insert _ _ _)) = result
+    fromTriggerStatement (TriggerStatement result@(Insert _ _ _)) = result
+
+instance StatementClass Update where
+    fromAnyStatement (Statement result@(Update _ _ _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Update _ _ _ _)) = result
+    fromTriggerStatement (TriggerStatement result@(Update _ _ _ _)) = result
+    
+instance StatementClass Select where
+    fromAnyStatement (Statement result@(Select _ _ _ _)) = result
+    fromExplainableStatement (ExplainableStatement result@(Select _ _ _ _)) = result
+    fromTriggerStatement (TriggerStatement result@(Select _ _ _ _)) = result
+
+data ExplainableStatement = forall t v w . ExplainableStatement (Statement L0 t v w)
 instance Eq ExplainableStatement where
     ExplainableStatement a == ExplainableStatement b = Statement a == Statement b
 deriving instance Show ExplainableStatement
 instance ShowTokens ExplainableStatement where
     showTokens (ExplainableStatement statement) = showTokens statement
 
-data TriggerStatement = forall l v . TriggerStatement (Statement l T v)
+data TriggerStatement = forall l v w . TriggerStatement (Statement l T v w)
 instance Eq TriggerStatement where
     TriggerStatement a == TriggerStatement b = Statement a == Statement b
 deriving instance Show TriggerStatement
@@ -1411,46 +1496,105 @@ data NS
 --   SELECT statement.
 data S
 
-data Statement level triggerable valueReturning where
+data Explain'
+type Explain = Statement L1 NT NS Explain'
+data ExplainQueryPlan'
+type ExplainQueryPlan = Statement L1 NT NS ExplainQueryPlan'
+data AlterTable'
+type AlterTable = Statement L0 NT NS AlterTable'
+data Analyze'
+type Analyze = Statement L0 NT NS Analyze'
+data Attach'
+type Attach = Statement L0 NT NS Attach'
+data Begin'
+type Begin = Statement L0 NT NS Begin'
+data Commit'
+type Commit = Statement L0 NT NS Commit'
+data CreateIndex'
+type CreateIndex = Statement L0 NT NS CreateIndex'
+data CreateTable'
+type CreateTable = Statement L0 NT NS CreateTable'
+data CreateTrigger'
+type CreateTrigger = Statement L0 NT NS CreateTrigger'
+data CreateView'
+type CreateView = Statement L0 NT NS CreateView'
+data CreateVirtualTable'
+type CreateVirtualTable = Statement L0 NT NS CreateVirtualTable'
+data Delete'
+type Delete = Statement L0 T NS Delete'
+data DeleteLimited'
+type DeleteLimited = Statement L0 NT NS DeleteLimited'
+data Detach'
+type Detach = Statement L0 NT NS Detach'
+data DropIndex'
+type DropIndex = Statement L0 NT NS DropIndex'
+data DropTable'
+type DropTable = Statement L0 NT NS DropTable'
+data DropTrigger'
+type DropTrigger = Statement L0 NT NS DropTrigger'
+data DropView'
+type DropView = Statement L0 NT NS DropView'
+data Insert'
+type Insert = Statement L0 T NS Insert'
+data Pragma'
+type Pragma = Statement L0 NT NS Pragma'
+data Reindex'
+type Reindex = Statement L0 NT NS Reindex'
+data Release'
+type Release = Statement L0 NT NS Release'
+data Rollback'
+type Rollback = Statement L0 NT NS Rollback'
+data Savepoint'
+type Savepoint = Statement L0 NT NS Savepoint'
+data Select'
+type Select = Statement L0 T S Select'
+data Update'
+type Update = Statement L0 T NS Update'
+data UpdateLimited'
+type UpdateLimited = Statement L0 NT NS UpdateLimited'
+data Vacuum'
+type Vacuum = Statement L0 NT NS Vacuum'
+
+data Statement level triggerable valueReturning which where
     Explain
         :: ExplainableStatement
-        -> Statement L1 NT NS
+        -> Statement L1 NT NS Explain'
     ExplainQueryPlan
         :: ExplainableStatement
-        -> Statement L1 NT NS
+        -> Statement L1 NT NS ExplainQueryPlan'
     AlterTable
         :: SinglyQualifiedIdentifier
         -> AlterTableBody
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS AlterTable'
     Analyze
         :: SinglyQualifiedIdentifier
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS Analyze'
     Attach
         :: Bool
         -> String
         -> UnqualifiedIdentifier
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS Attach'
     Begin
         :: MaybeTransactionType
         -> Bool
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS Begin'
     Commit
         :: Bool
         -> Bool
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS Commit'
     CreateIndex
         :: MaybeUnique
         -> MaybeIfNotExists
         -> SinglyQualifiedIdentifier
         -> UnqualifiedIdentifier
         -> (OneOrMore IndexedColumn)
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS CreateIndex'
     CreateTable
         :: Permanence
         -> MaybeIfNotExists
         -> SinglyQualifiedIdentifier
         -> EitherColumnsAndConstraintsSelect
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS CreateTable'
     CreateTrigger
         :: Permanence
         -> MaybeIfNotExists
@@ -1461,83 +1605,83 @@ data Statement level triggerable valueReturning where
         -> MaybeForEachRow
         -> (Maybe WhenClause)
         -> (OneOrMore TriggerStatement)
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS CreateTrigger'
     CreateView
         :: Permanence
         -> MaybeIfNotExists
         -> SinglyQualifiedIdentifier
-        -> (Statement L0 T S)
-        -> Statement L0 NT NS
+        -> (Statement L0 T S Select')
+        -> Statement L0 NT NS CreateView'
     CreateVirtualTable
         :: SinglyQualifiedIdentifier
         -> UnqualifiedIdentifier
         -> [ModuleArgument]
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS CreateVirtualTable'
     Delete
         :: QualifiedTableName
         -> (Maybe WhereClause)
-        -> Statement L0 T NS
+        -> Statement L0 T NS Delete'
     DeleteLimited
         :: QualifiedTableName
         -> (Maybe WhereClause)
         -> (Maybe OrderClause)
         -> LimitClause
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS DeleteLimited'
     Detach
         :: Bool
         -> UnqualifiedIdentifier
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS Detach'
     DropIndex
         :: MaybeIfExists
         -> SinglyQualifiedIdentifier
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS DropIndex'
     DropTable
         :: MaybeIfExists
         -> SinglyQualifiedIdentifier
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS DropTable'
     DropTrigger
         :: MaybeIfExists
         -> SinglyQualifiedIdentifier
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS DropTrigger'
     DropView
         :: MaybeIfExists
         -> SinglyQualifiedIdentifier
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS DropView'
     Insert
         :: InsertHead
         -> SinglyQualifiedIdentifier
         -> InsertBody
-        -> Statement L0 T NS
+        -> Statement L0 T NS Insert'
     Pragma
         :: SinglyQualifiedIdentifier
         -> PragmaBody
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS Pragma'
     Reindex
         :: SinglyQualifiedIdentifier
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS Reindex'
     Release
         :: Bool
         -> UnqualifiedIdentifier
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS Release'
     Rollback
         :: Bool
         -> (Maybe (Bool, UnqualifiedIdentifier))
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS Rollback'
     Savepoint
         :: UnqualifiedIdentifier
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS Savepoint'
     Select
         :: SelectCore
         -> [(CompoundOperator, SelectCore)]
         -> (Maybe OrderClause)
         -> (Maybe LimitClause)
-        -> Statement L0 T S
+        -> Statement L0 T S Select'
     Update
         :: UpdateHead
         -> QualifiedTableName
         -> (OneOrMore (UnqualifiedIdentifier, Expression))
         -> (Maybe WhereClause)
-        -> Statement L0 T NS
+        -> Statement L0 T NS Update'
     UpdateLimited
         :: UpdateHead
         -> QualifiedTableName
@@ -1545,14 +1689,14 @@ data Statement level triggerable valueReturning where
         -> (Maybe WhereClause)
         -> (Maybe OrderClause)
         -> LimitClause
-        -> Statement L0 NT NS
+        -> Statement L0 NT NS UpdateLimited'
     Vacuum
-        :: Statement L0 NT NS
-deriving instance Eq (Statement l t v)
-deriving instance Show (Statement l t v)
+        :: Statement L0 NT NS Vacuum'
+deriving instance Eq (Statement l t v w)
+deriving instance Show (Statement l t v w)
 
 
-instance ShowTokens (Statement a b c) where
+instance ShowTokens (Statement l t v w) where
     showTokens (Explain statement)
         = [KeywordExplain]
           ++ showTokens statement
