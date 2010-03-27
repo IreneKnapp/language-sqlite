@@ -63,6 +63,7 @@ module Language.SQL.SQLite.Syntax (
                                    readMaybeTransactionType,
                                    readMaybeDatabase,
                                    readMaybeSavepoint,
+                                   readMaybeReleaseSavepoint,
                                    readStatementList,
                                    readAnyStatement,
                                    readExplainableStatement,
@@ -176,6 +177,7 @@ import Language.SQL.SQLite.Types
 %name parseMaybeTransactionType MaybeTransactionType
 %name parseMaybeDatabase MaybeDatabase
 %name parseMaybeSavepoint MaybeSavepoint
+%name parseMaybeReleaseSavepoint MaybeReleaseSavepoint
 %name parseStatementList StatementList
 %name parseAnyStatement Statement
 %name parseExplainableStatement ExplainableStatement
@@ -1246,6 +1248,12 @@ MaybeSavepoint :: { MaybeSavepoint }
     | to savepoint UnqualifiedIdentifier
     { ToSavepoint $3 }
 
+MaybeReleaseSavepoint :: { MaybeReleaseSavepoint }
+    : UnqualifiedIdentifier
+    { ElidedReleaseSavepoint $1 }
+    | savepoint UnqualifiedIdentifier
+    { ReleaseSavepoint $2 }
+
 StatementList :: { StatementList }
     :
     { StatementList [] }
@@ -1478,10 +1486,8 @@ Reindex :: { Reindex }
     { Reindex $2 }
 
 Release :: { Release }
-    : release UnqualifiedIdentifier
-    { Release False $2 }
-    | release savepoint UnqualifiedIdentifier
-    { Release True $3 }
+    : release MaybeReleaseSavepoint UnqualifiedIdentifier
+    { Release $2 $3 }
 
 Rollback :: { Rollback }
     : rollback MaybeTransaction MaybeSavepoint
@@ -1837,6 +1843,10 @@ readMaybeDatabase input = runParse parseMaybeDatabase input
 
 readMaybeSavepoint :: String -> Either ParseError MaybeSavepoint
 readMaybeSavepoint input = runParse parseMaybeSavepoint input
+
+
+readMaybeReleaseSavepoint :: String -> Either ParseError MaybeReleaseSavepoint
+readMaybeReleaseSavepoint input = runParse parseMaybeReleaseSavepoint input
 
 
 readStatementList :: String -> Either ParseError StatementList

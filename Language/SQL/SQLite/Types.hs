@@ -67,6 +67,7 @@ module Language.SQL.SQLite.Types (
                                   MaybeTransactionType(..),
                                   MaybeDatabase(..),
                                   MaybeSavepoint(..),
+                                  MaybeReleaseSavepoint(..),
                                   StatementList(..),
                                   AnyStatement(..),
                                   fromAnyStatement,
@@ -1262,6 +1263,16 @@ instance ShowTokens MaybeSavepoint where
         = [KeywordTo, KeywordSavepoint]
           ++ showTokens savepointName
 
+data MaybeReleaseSavepoint = ElidedReleaseSavepoint UnqualifiedIdentifier
+                           | ReleaseSavepoint UnqualifiedIdentifier
+                             deriving (Eq, Show)
+instance ShowTokens MaybeReleaseSavepoint where
+    showTokens (ElidedReleaseSavepoint savepointName)
+               = showTokens savepointName
+    showTokens (ReleaseSavepoint savepointName)
+               = [KeywordSavepoint]
+                 ++ showTokens savepointName
+
 data StatementList = StatementList [AnyStatement]
                      deriving (Eq, Show)
 instance ShowTokens StatementList where
@@ -1709,7 +1720,7 @@ data Statement level triggerable valueReturning which where
         :: SinglyQualifiedIdentifier
         -> Statement L0 NT NS Reindex'
     Release
-        :: Bool
+        :: MaybeReleaseSavepoint
         -> UnqualifiedIdentifier
         -> Statement L0 NT NS Release'
     Rollback
@@ -1878,12 +1889,9 @@ instance ShowTokens (Statement l t v w) where
     showTokens (Reindex thingName)
         = [KeywordReindex]
           ++ showTokens thingName
-    showTokens (Release savepointKeywordPresent savepointName)
+    showTokens (Release maybeReleaseSavepoint savepointName)
         = [KeywordRelease]
-          ++ (if savepointKeywordPresent
-                then [KeywordSavepoint]
-                else [])
-          ++ showTokens savepointName
+          ++ showTokens maybeReleaseSavepoint
     showTokens (Rollback maybeTransaction maybeSavepoint)
         = [KeywordRollback]
           ++ showTokens maybeTransaction
