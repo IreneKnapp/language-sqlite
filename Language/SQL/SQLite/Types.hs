@@ -65,7 +65,7 @@ module Language.SQL.SQLite.Types (
                                   ForeignKeyClause(..),
                                   ForeignKeyClauseActionOrMatchPart(..),
                                   ForeignKeyClauseActionPart(..),
-                                  ForeignKeyClauseDeferrablePart(..),
+                                  MaybeForeignKeyClauseDeferrablePart(..),
                                   MaybeInitialDeferralStatus(..),
                                   MaybeTransaction(..),
                                   MaybeTransactionType(..),
@@ -1153,7 +1153,7 @@ data ForeignKeyClause
     = References UnqualifiedIdentifier
                  [UnqualifiedIdentifier]
                  [ForeignKeyClauseActionOrMatchPart]
-                 (Maybe ForeignKeyClauseDeferrablePart)
+                 MaybeForeignKeyClauseDeferrablePart
       deriving (Eq, Show)
 instance ShowTokens ForeignKeyClause where
     showTokens (References tableName
@@ -1167,9 +1167,7 @@ instance ShowTokens ForeignKeyClause where
                      ++ (intercalate [PunctuationComma] $ map showTokens columnNames)
                      ++ [PunctuationRightParenthesis])
           ++ (concat $ map showTokens actionOrMatchParts)
-          ++ (case maybeDeferrablePart of
-                Nothing -> []
-                Just deferrablePart -> showTokens deferrablePart)
+          ++ showTokens maybeDeferrablePart
 
 data ForeignKeyClauseActionOrMatchPart
     = OnDelete ForeignKeyClauseActionPart
@@ -1201,11 +1199,13 @@ instance ShowTokens ForeignKeyClauseActionPart where
     showTokens Restrict = [KeywordRestrict]
     showTokens NoAction = [KeywordNo, KeywordAction]
 
-data ForeignKeyClauseDeferrablePart
-    = Deferrable MaybeInitialDeferralStatus
+data MaybeForeignKeyClauseDeferrablePart
+    = NoDeferrablePart
+    | Deferrable MaybeInitialDeferralStatus
     | NotDeferrable MaybeInitialDeferralStatus
       deriving (Eq, Show)
-instance ShowTokens ForeignKeyClauseDeferrablePart where
+instance ShowTokens MaybeForeignKeyClauseDeferrablePart where
+    showTokens NoDeferrablePart = []
     showTokens (Deferrable maybeInitialDeferralStatus)
         = [KeywordDeferrable]
           ++ showTokens maybeInitialDeferralStatus

@@ -61,7 +61,7 @@ module Language.SQL.SQLite.Syntax (
                                    readForeignKeyClause,
                                    readForeignKeyClauseActionOrMatchPart,
                                    readForeignKeyClauseActionPart,
-                                   readForeignKeyClauseDeferrablePart,
+                                   readMaybeForeignKeyClauseDeferrablePart,
                                    readMaybeInitialDeferralStatus,
                                    readMaybeTransaction,
                                    readMaybeTransactionType,
@@ -179,7 +179,7 @@ import Language.SQL.SQLite.Types
 %name parseForeignKeyClause ForeignKeyClause
 %name parseForeignKeyClauseActionOrMatchPart ForeignKeyClauseActionOrMatchPart
 %name parseForeignKeyClauseActionPart ForeignKeyClauseActionPart
-%name parseForeignKeyClauseDeferrablePart ForeignKeyClauseDeferrablePart
+%name parseMaybeForeignKeyClauseDeferrablePart MaybeForeignKeyClauseDeferrablePart
 %name parseMaybeInitialDeferralStatus MaybeInitialDeferralStatus
 %name parseMaybeTransaction MaybeTransaction
 %name parseMaybeTransactionType MaybeTransactionType
@@ -1220,17 +1220,13 @@ ForeignKeyClauseActionPart :: { ForeignKeyClauseActionPart }
     | no action
     { NoAction }
 
-ForeignKeyClauseDeferrablePart :: { ForeignKeyClauseDeferrablePart }
-    : deferrable MaybeInitialDeferralStatus
+MaybeForeignKeyClauseDeferrablePart :: { MaybeForeignKeyClauseDeferrablePart }
+    : %prec LOOSER_THAN_NOT
+    { NoDeferrablePart }
+    | deferrable MaybeInitialDeferralStatus
     { Deferrable $2 }
     | not deferrable MaybeInitialDeferralStatus
     { NotDeferrable $3 }
-
-MaybeForeignKeyClauseDeferrablePart :: { Maybe ForeignKeyClauseDeferrablePart }
-    : %prec LOOSER_THAN_NOT
-    { Nothing }
-    | ForeignKeyClauseDeferrablePart
-    { Just $1 }
 
 MaybeInitialDeferralStatus :: { MaybeInitialDeferralStatus }
     :
@@ -1855,10 +1851,10 @@ readForeignKeyClauseActionPart input
     = runParse parseForeignKeyClauseActionPart input
 
 
-readForeignKeyClauseDeferrablePart
-    :: String -> Either ParseError ForeignKeyClauseDeferrablePart
-readForeignKeyClauseDeferrablePart input
-    = runParse parseForeignKeyClauseDeferrablePart input
+readMaybeForeignKeyClauseDeferrablePart
+    :: String -> Either ParseError MaybeForeignKeyClauseDeferrablePart
+readMaybeForeignKeyClauseDeferrablePart input
+    = runParse parseMaybeForeignKeyClauseDeferrablePart input
 
 
 readMaybeInitialDeferralStatus
