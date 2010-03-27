@@ -12,14 +12,23 @@ bug-reports: http://dankna.com/issues/create/
 category: Language, Database
 synopsis: Full parser and generator for SQL as implemented by SQLite3
 description:
+  This is a full parser and generator for SQL as implemented by SQLite3.
+  It is well-typed in the sense that it is possible to construct an
+  abstract syntax tree if and only if it corresponds to valid SQL.
 
 Library
   exposed-modules: Language.SQL.SQLite,
+                   Language.SQL.SQLite.C,
+                   Language.SQL.SQLite.CTH,
                    Language.SQL.SQLite.Tools
-  other-modules: Language.SQL.SQLite.Types,
-                 Language.SQL.SQLite.Syntax
+  other-modules: Language.SQL.SQLite.Syntax,
+                 Language.SQL.SQLite.Types
   build-depends: base >= 4.1 && < 5,
                  array >= 0.3.0.0,
                  bytestring >= 0.9.1.5,
                  containers >= 0.2.0.1,
-                 mtl >= 1.1.0.2
+                 mtl >= 1.1.0.2,
+                 template-haskell,
+                 
+                 utf8-string >= 0.3.6
+  ghc-options: -ddump-splices
