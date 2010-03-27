@@ -13,6 +13,7 @@ module Language.SQL.SQLite.Types (
                                   TypeSizeField(..),
                                   LikeType(..),
                                   Escape(..),
+                                  MaybeSwitchExpression(..),
                                   CasePair(..),
                                   Else(..),
                                   Expression(..),
@@ -229,6 +230,12 @@ instance ShowTokens Escape where
         = [KeywordEscape]
           ++ showTokens expression
 
+data MaybeSwitchExpression = NoSwitch | Switch Expression
+                             deriving (Eq, Show)
+instance ShowTokens MaybeSwitchExpression where
+    showTokens NoSwitch = []
+    showTokens (Switch expression) = showTokens expression
+
 data CasePair = WhenThen Expression Expression
                 deriving (Eq, Show)
 instance ShowTokens CasePair where
@@ -304,7 +311,7 @@ data Expression = ExpressionLiteralInteger Word64
                 | ExpressionSubquery (Select)
                 | ExpressionExistsSubquery (Select)
                 | ExpressionNotExistsSubquery (Select)
-                | ExpressionCase (Maybe Expression)
+                | ExpressionCase MaybeSwitchExpression
                                  (OneOrMore CasePair)
                                  Else
                 | ExpressionRaiseIgnore
@@ -488,14 +495,9 @@ instance ShowTokens Expression where
         = [KeywordNot, KeywordExists, PunctuationLeftParenthesis]
           ++ showTokens statement
           ++ [PunctuationRightParenthesis]
-    showTokens (ExpressionCase Nothing cases else')
+    showTokens (ExpressionCase maybeSwitchExpression cases else')
         = [KeywordCase]
-          ++ (concat $ mapOneOrMore showTokens cases)
-          ++ showTokens else'
-          ++ [KeywordEnd]
-    showTokens (ExpressionCase (Just expression) cases else')
-        = [KeywordCase]
-          ++ showTokens expression
+          ++ showTokens maybeSwitchExpression
           ++ (concat $ mapOneOrMore showTokens cases)
           ++ showTokens else'
           ++ [KeywordEnd]

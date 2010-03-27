@@ -6,6 +6,7 @@ module Language.SQL.SQLite.Syntax (
                                    readMaybeTypeSize,
                                    readTypeSizeField,
                                    readLikeType,
+                                   readMaybeSwitchExpression,
                                    readCasePair,
                                    readEscape,
                                    readElse,
@@ -124,6 +125,7 @@ import Language.SQL.SQLite.Types
 %name parseTypeSizeField TypeSizeField
 %name parseLikeType LikeType
 %name parseEscape Escape
+%name parseMaybeSwitchExpression MaybeSwitchExpression
 %name parseCasePair CasePair
 %name parseElse Else
 %name parseExpression Expression
@@ -505,10 +507,8 @@ Expression2 :: { Expression }
 Expression3 :: { Expression }
     : Expression2 %prec LOOSER_THAN_COLLATE
     { $1 }
-    | case CaseList Else end
-    { ExpressionCase Nothing (fromJust $ mkOneOrMore $2) $3 }
-    | case Expression CaseList Else end
-    { ExpressionCase (Just $2) (fromJust $ mkOneOrMore $3) $4 }
+    | case MaybeSwitchExpression CaseList Else end
+    { ExpressionCase $2 (fromJust $ mkOneOrMore $3) $4 }
 
 Expression4 :: { Expression }
     : Expression3
@@ -677,6 +677,12 @@ OneOrMoreSetPair :: { [(UnqualifiedIdentifier, Expression)] }
     { [($1, $3)] }
     | OneOrMoreSetPair ',' UnqualifiedIdentifier '=' Expression
     { $1 ++ [($3, $5)] }
+
+MaybeSwitchExpression :: { MaybeSwitchExpression }
+    :
+    { NoSwitch }
+    | Expression
+    { Switch $1 }
 
 CaseList :: { [CasePair] }
     : CasePair
@@ -1627,6 +1633,10 @@ readLikeType input = runParse parseLikeType input
 
 readEscape :: String -> Either ParseError Escape
 readEscape input = runParse parseEscape input
+
+
+readMaybeSwitchExpression :: String -> Either ParseError MaybeSwitchExpression
+readMaybeSwitchExpression input = runParse parseMaybeSwitchExpression input
 
 
 readCasePair :: String -> Either ParseError CasePair
