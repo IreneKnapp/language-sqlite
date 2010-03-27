@@ -12,6 +12,7 @@ module Language.SQL.SQLite.Types (
                                   MaybeTypeSize(..),
                                   TypeSizeField(..),
                                   LikeType(..),
+                                  Escape(..),
                                   CasePair(..),
                                   Else(..),
                                   Expression(..),
@@ -220,6 +221,14 @@ instance ShowTokens LikeType where
     showTokens Match = [KeywordMatch]
     showTokens NotMatch = [KeywordNot, KeywordMatch]
 
+data Escape = NoEscape | Escape Expression
+              deriving (Eq, Show)
+instance ShowTokens Escape where
+    showTokens NoEscape = []
+    showTokens (Escape expression)
+        = [KeywordEscape]
+          ++ showTokens expression
+
 data CasePair = WhenThen Expression Expression
                 deriving (Eq, Show)
 instance ShowTokens CasePair where
@@ -278,7 +287,7 @@ data Expression = ExpressionLiteralInteger Word64
                 | ExpressionFunctionCallStar UnqualifiedIdentifier
                 | ExpressionCast Expression Type
                 | ExpressionCollate Expression UnqualifiedIdentifier
-                | ExpressionLike Expression LikeType Expression (Maybe Expression)
+                | ExpressionLike Expression LikeType Expression Escape
                 | ExpressionIsnull Expression
                 | ExpressionNotnull Expression
                 | ExpressionNotNull Expression
@@ -405,15 +414,10 @@ instance ShowTokens Expression where
         = showTokens expression
           ++ [KeywordCollate]
           ++ showTokens collation
-    showTokens (ExpressionLike a likeType b Nothing)
+    showTokens (ExpressionLike a likeType b escape)
         = showTokens a
           ++ showTokens likeType
           ++ showTokens b
-    showTokens (ExpressionLike a likeType b (Just escape))
-        = showTokens a
-          ++ showTokens likeType
-          ++ showTokens b
-          ++ [KeywordEscape]
           ++ showTokens escape
     showTokens (ExpressionIsnull expression)
         = showTokens expression

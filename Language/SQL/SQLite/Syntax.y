@@ -7,6 +7,7 @@ module Language.SQL.SQLite.Syntax (
                                    readTypeSizeField,
                                    readLikeType,
                                    readCasePair,
+                                   readEscape,
                                    readElse,
                                    readExpression,
                                    readMaybeUnique,
@@ -122,6 +123,7 @@ import Language.SQL.SQLite.Types
 %name parseMaybeTypeSize MaybeTypeSize
 %name parseTypeSizeField TypeSizeField
 %name parseLikeType LikeType
+%name parseEscape Escape
 %name parseCasePair CasePair
 %name parseElse Else
 %name parseExpression Expression
@@ -440,6 +442,12 @@ LikeType :: { LikeType }
     | not match
     { NotMatch }
 
+Escape :: { Escape }
+    :
+    { NoEscape }
+    | escape Expression
+    { Escape $2 }
+
 Expression0 :: { Expression }
     : integer
     { ExpressionLiteralInteger $1 }
@@ -569,10 +577,8 @@ Expression10 :: { Expression }
 Expression11 :: { Expression }
     : Expression10 %prec LOOSER_THAN_NOT
     { $1 }
-    | Expression11 LikeType Expression10 %prec LOOSER_THAN_NOT
-    { ExpressionLike $1 $2 $3 Nothing }
-    | Expression11 LikeType Expression10 escape Expression10 %prec LOOSER_THAN_NOT
-    { ExpressionLike $1 $2 $3 (Just $5) }
+    | Expression11 LikeType Expression10 Escape %prec LOOSER_THAN_NOT
+    { ExpressionLike $1 $2 $3 $4 }
 
 Expression12 :: { Expression }
     : Expression11 %prec LOOSER_THAN_NOT
@@ -1617,6 +1623,10 @@ readTypeSizeField input = runParse parseTypeSizeField input
 
 readLikeType :: String -> Either ParseError LikeType
 readLikeType input = runParse parseLikeType input
+
+
+readEscape :: String -> Either ParseError Escape
+readEscape input = runParse parseEscape input
 
 
 readCasePair :: String -> Either ParseError CasePair
