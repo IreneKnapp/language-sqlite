@@ -62,6 +62,7 @@ module Language.SQL.SQLite.Syntax (
                                    readMaybeTransaction,
                                    readMaybeTransactionType,
                                    readMaybeDatabase,
+                                   readMaybeSavepoint,
                                    readStatementList,
                                    readAnyStatement,
                                    readExplainableStatement,
@@ -174,6 +175,7 @@ import Language.SQL.SQLite.Types
 %name parseMaybeTransaction MaybeTransaction
 %name parseMaybeTransactionType MaybeTransactionType
 %name parseMaybeDatabase MaybeDatabase
+%name parseMaybeSavepoint MaybeSavepoint
 %name parseStatementList StatementList
 %name parseAnyStatement Statement
 %name parseExplainableStatement ExplainableStatement
@@ -1236,6 +1238,14 @@ MaybeDatabase :: { MaybeDatabase }
     | database
     { Database }
 
+MaybeSavepoint :: { MaybeSavepoint }
+    :
+    { NoSavepoint }
+    | to UnqualifiedIdentifier
+    { To $2 }
+    | to savepoint UnqualifiedIdentifier
+    { ToSavepoint $3 }
+
 StatementList :: { StatementList }
     :
     { StatementList [] }
@@ -1474,12 +1484,8 @@ Release :: { Release }
     { Release True $3 }
 
 Rollback :: { Rollback }
-    : rollback MaybeTransaction
-    { Rollback $2 Nothing }
-    | rollback MaybeTransaction to UnqualifiedIdentifier
-    { Rollback $2 (Just (False, $4)) }
-    | rollback MaybeTransaction to savepoint UnqualifiedIdentifier
-    { Rollback $2 (Just (True, $5)) }
+    : rollback MaybeTransaction MaybeSavepoint
+    { Rollback $2 $3 }
 
 Savepoint :: { Savepoint }
     : savepoint UnqualifiedIdentifier
@@ -1827,6 +1833,10 @@ readMaybeTransactionType input = runParse parseMaybeTransactionType input
 
 readMaybeDatabase :: String -> Either ParseError MaybeDatabase
 readMaybeDatabase input = runParse parseMaybeDatabase input
+
+
+readMaybeSavepoint :: String -> Either ParseError MaybeSavepoint
+readMaybeSavepoint input = runParse parseMaybeSavepoint input
 
 
 readStatementList :: String -> Either ParseError StatementList

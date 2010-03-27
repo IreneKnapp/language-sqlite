@@ -66,6 +66,7 @@ module Language.SQL.SQLite.Types (
                                   MaybeTransaction(..),
                                   MaybeTransactionType(..),
                                   MaybeDatabase(..),
+                                  MaybeSavepoint(..),
                                   StatementList(..),
                                   AnyStatement(..),
                                   fromAnyStatement,
@@ -1248,6 +1249,19 @@ instance ShowTokens MaybeDatabase where
     showTokens ElidedDatabase = []
     showTokens Database = [KeywordDatabase]
 
+data MaybeSavepoint = NoSavepoint
+                    | To UnqualifiedIdentifier
+                    | ToSavepoint UnqualifiedIdentifier
+                      deriving (Eq, Show)
+instance ShowTokens MaybeSavepoint where
+    showTokens NoSavepoint = []
+    showTokens (To savepointName)
+        = [KeywordTo]
+          ++ showTokens savepointName
+    showTokens (ToSavepoint savepointName)
+        = [KeywordTo, KeywordSavepoint]
+          ++ showTokens savepointName
+
 data StatementList = StatementList [AnyStatement]
                      deriving (Eq, Show)
 instance ShowTokens StatementList where
@@ -1700,7 +1714,7 @@ data Statement level triggerable valueReturning which where
         -> Statement L0 NT NS Release'
     Rollback
         :: MaybeTransaction
-        -> (Maybe (Bool, UnqualifiedIdentifier))
+        -> MaybeSavepoint
         -> Statement L0 NT NS Rollback'
     Savepoint
         :: UnqualifiedIdentifier
@@ -1873,14 +1887,7 @@ instance ShowTokens (Statement l t v w) where
     showTokens (Rollback maybeTransaction maybeSavepoint)
         = [KeywordRollback]
           ++ showTokens maybeTransaction
-          ++ (case maybeSavepoint of
-                Nothing -> []
-                Just (savepointKeywordPresent, savepointName) ->
-                    [KeywordTo]
-                    ++ (if savepointKeywordPresent
-                          then [KeywordSavepoint]
-                          else [])
-                    ++ showTokens savepointName)
+          ++ showTokens maybeSavepoint
     showTokens (Savepoint savepointName)
         = [KeywordSavepoint]
           ++ showTokens savepointName
