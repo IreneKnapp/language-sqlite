@@ -10,7 +10,6 @@ module Language.SQL.SQLite.CTH (
 import Data.Char
 import Data.List
 import Foreign
-import Language.Haskell.Semiquotation
 import Language.Haskell.TH.Syntax
 import qualified Language.SQL.SQLite as SQL
 

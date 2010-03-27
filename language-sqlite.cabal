@@ -30,4 +30,4 @@ Library
                  mtl >= 1.1.0.2,
                  template-haskell,
                  
-                 utf8-string >= 0.3.6,
+                 utf8-string >= 0.3.6

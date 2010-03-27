@@ -8,7 +8,6 @@ import Foreign.C
 import Foreign.Ptr
 import Foreign.StablePtr
 import Foreign.Storable
-import Language.Haskell.Semiquotation
 
 import Language.SQL.SQLite
 import Language.SQL.SQLite.CTH
