@@ -9,6 +9,8 @@ module Language.SQL.SQLite.Types (
                                   mkNonnegativeDouble,
                                   fromNonnegativeDouble,
                                   Type(..),
+                                  MaybeTypeSize(..),
+                                  TypeSizeField(..),
                                   LikeType(..),
                                   Expression(..),
                                   MaybeUnique(..),
@@ -154,29 +156,43 @@ fromNonnegativeDouble :: NonnegativeDouble -> Double
 fromNonnegativeDouble (MkNonnegativeDouble double) = double
 
 data Type = Type UnqualifiedIdentifier
-                 (Maybe ((MaybeSign, Either NonnegativeDouble Word64),
-                         Maybe (MaybeSign, (Either NonnegativeDouble Word64))))
+                 MaybeTypeSize
             deriving (Eq, Show)
 instance ShowTokens Type where
-    showTokens (Type name Nothing)
+    showTokens (Type name maybeTypeSize)
         = showTokens name
-    showTokens (Type name (Just (maxLength, Nothing)))
-        = showTokens name
-          ++ [PunctuationLeftParenthesis]
-          ++ showTokens maxLength
+          ++ showTokens maybeTypeSize
+
+
+data MaybeTypeSize = NoTypeSize
+                   | TypeMaximumSize TypeSizeField
+                   | TypeSize TypeSizeField TypeSizeField
+                     deriving (Eq, Show)
+instance ShowTokens MaybeTypeSize where
+    showTokens NoTypeSize = []
+    showTokens (TypeMaximumSize maximumSize)
+        = [PunctuationLeftParenthesis]
+          ++ showTokens maximumSize
           ++ [PunctuationRightParenthesis]
-    showTokens (Type name (Just (minLength, Just maxLength)))
-        = showTokens name
-          ++ [PunctuationLeftParenthesis]
-          ++ showTokens minLength
+    showTokens (TypeSize minimumSize maximumSize)
+        = [PunctuationLeftParenthesis]
+          ++ showTokens minimumSize
           ++ [PunctuationComma]
-          ++ showTokens maxLength
+          ++ showTokens maximumSize
           ++ [PunctuationRightParenthesis]
 
-instance ShowTokens (MaybeSign, (Either NonnegativeDouble Word64)) where
-    showTokens (maybeSign, (Left nonnegativeDouble))
-        = showTokens maybeSign ++ [LiteralFloat nonnegativeDouble]
-    showTokens (maybeSign, (Right word)) = showTokens maybeSign ++ [LiteralInteger word]
+
+data TypeSizeField = DoubleSize MaybeSign NonnegativeDouble
+                   | IntegerSize MaybeSign Word64
+                     deriving (Eq, Show)
+instance ShowTokens TypeSizeField where
+    showTokens (DoubleSize maybeSign nonnegativeDouble)
+        = showTokens maybeSign
+          ++ [LiteralFloat nonnegativeDouble]
+    showTokens (IntegerSize maybeSign word)
+        = showTokens maybeSign
+          ++ [LiteralInteger word]
+
 
 data LikeType = Like
               | NotLike

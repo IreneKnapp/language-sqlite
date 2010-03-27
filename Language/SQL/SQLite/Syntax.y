@@ -387,19 +387,22 @@ import Language.SQL.SQLite.Types
 %%
 
 Type :: { Type }
-    : UnqualifiedIdentifier
-    { Type $1 Nothing }
-    | UnqualifiedIdentifier '(' MaybeSign EitherNonnegativeDoubleWord64 ')'
-    { Type $1 (Just (($3, $4), Nothing)) }
-    | UnqualifiedIdentifier '(' MaybeSign EitherNonnegativeDoubleWord64 ','
-      MaybeSign EitherNonnegativeDoubleWord64 ')'
-    { Type $1 (Just (($3, $4), Just ($6, $7))) }
+    : UnqualifiedIdentifier MaybeTypeSize
+    { Type $1 $2 }
 
-EitherNonnegativeDoubleWord64 :: { Either NonnegativeDouble Word64 }
-    : float
-    { Left $1 }
-    | integer
-    { Right $ 1}
+MaybeTypeSize :: { MaybeTypeSize }
+    :
+    { NoTypeSize }
+    | '(' TypeSizeField ')'
+    { TypeMaximumSize $2 }
+    | '(' TypeSizeField ',' TypeSizeField ')'
+    { TypeSize $2 $4 }
+
+TypeSizeField :: { TypeSizeField }
+    : MaybeSign float
+    { DoubleSize $1 $2 }
+    | MaybeSign integer
+    { IntegerSize $1 $2 }
 
 LikeType :: { LikeType }
     : like
