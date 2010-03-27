@@ -22,6 +22,7 @@ module Language.SQL.SQLite.Types (
                                   MaybeAscDesc(..),
                                   MaybeAutoincrement(..),
                                   MaybeSign(..),
+                                  MaybeColumn(..),
                                   AlterTableBody(..),
                                   ColumnDefinition(..),
                                   DefaultValue(..),
@@ -63,6 +64,7 @@ module Language.SQL.SQLite.Types (
                                   ForeignKeyClauseDeferrablePart(..),
                                   MaybeInitialDeferralStatus(..),
                                   MaybeTransactionType(..),
+                                  MaybeDatabase(..),
                                   StatementList(..),
                                   AnyStatement(..),
                                   fromAnyStatement,
@@ -588,19 +590,23 @@ instance ShowTokens MaybeSign where
     showTokens PositiveSign = [PunctuationPlus]
     showTokens NegativeSign = [PunctuationMinus]
 
+data MaybeColumn = ElidedColumn | Column
+                   deriving (Eq, Show)
+instance ShowTokens MaybeColumn where
+    showTokens ElidedColumn = []
+    showTokens Column = [KeywordColumn]
+
 data AlterTableBody
     = RenameTo UnqualifiedIdentifier
-    | AddColumn Bool ColumnDefinition
+    | AddColumn MaybeColumn ColumnDefinition
       deriving (Eq, Show)
 instance ShowTokens AlterTableBody where
     showTokens (RenameTo newTableName)
         = [KeywordRename, KeywordTo]
           ++ showTokens newTableName
-    showTokens (AddColumn columnKeywordPresent columnDefinition)
+    showTokens (AddColumn maybeColumn columnDefinition)
         = [KeywordAdd]
-          ++ (if columnKeywordPresent
-                then [KeywordColumn]
-                else [])
+          ++ showTokens maybeColumn
           ++ showTokens columnDefinition
 
 data ColumnDefinition
@@ -1229,6 +1235,12 @@ instance ShowTokens MaybeTransactionType where
     showTokens Immediate = [KeywordImmediate]
     showTokens Exclusive = [KeywordExclusive]
 
+data MaybeDatabase = ElidedDatabase | Database
+                     deriving (Eq, Show)
+instance ShowTokens MaybeDatabase where
+    showTokens ElidedDatabase = []
+    showTokens Database = [KeywordDatabase]
+
 data StatementList = StatementList [AnyStatement]
                      deriving (Eq, Show)
 instance ShowTokens StatementList where
@@ -1586,7 +1598,7 @@ data Statement level triggerable valueReturning which where
         :: SinglyQualifiedIdentifier
         -> Statement L0 NT NS Analyze'
     Attach
-        :: Bool
+        :: MaybeDatabase
         -> String
         -> UnqualifiedIdentifier
         -> Statement L0 NT NS Attach'
@@ -1726,11 +1738,9 @@ instance ShowTokens (Statement l t v w) where
     showTokens (Analyze analyzableThingName)
         = [KeywordAnalyze]
           ++ showTokens analyzableThingName
-    showTokens (Attach databaseKeywordPresent filename databaseName)
+    showTokens (Attach maybeDatabase filename databaseName)
         = [KeywordAttach]
-          ++ (if databaseKeywordPresent
-                then [KeywordDatabase]
-                else [])
+          ++ showTokens maybeDatabase
           ++ [LiteralString filename, KeywordAs]
           ++ showTokens databaseName
     showTokens (Begin maybeTransactionType transactionKeywordPresent)

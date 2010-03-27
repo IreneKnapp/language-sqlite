@@ -3,6 +3,8 @@
 module Language.SQL.SQLite.Syntax (
                                    ParseError,
                                    readType,
+                                   readMaybeTypeSize,
+                                   readTypeSizeField,
                                    readLikeType,
                                    readExpression,
                                    readMaybeUnique,
@@ -14,6 +16,7 @@ module Language.SQL.SQLite.Syntax (
                                    readMaybeAscDesc,
                                    readMaybeAutoincrement,
                                    readMaybeSign,
+                                   readMaybeColumn,
                                    readAlterTableBody,
                                    readColumnDefinition,
                                    readDefaultValue,
@@ -57,6 +60,7 @@ module Language.SQL.SQLite.Syntax (
                                    readForeignKeyClauseDeferrablePart,
                                    readMaybeInitialDeferralStatus,
                                    readMaybeTransactionType,
+                                   readMaybeDatabase,
                                    readStatementList,
                                    readAnyStatement,
                                    readExplainableStatement,
@@ -110,6 +114,8 @@ import Language.SQL.SQLite.Types
 }
 
 %name parseType Type
+%name parseMaybeTypeSize MaybeTypeSize
+%name parseTypeSizeField TypeSizeField
 %name parseLikeType LikeType
 %name parseExpression Expression
 %name parseMaybeUnique MaybeUnique
@@ -121,6 +127,7 @@ import Language.SQL.SQLite.Types
 %name parseMaybeAscDesc MaybeAscDesc
 %name parseMaybeAutoincrement MaybeAutoincrement
 %name parseMaybeSign MaybeSign
+%name parseMaybeColumn MaybeColumn
 %name parseAlterTableBody AlterTableBody
 %name parseColumnDefinition ColumnDefinition
 %name parseDefaultValue DefaultValue
@@ -164,6 +171,7 @@ import Language.SQL.SQLite.Types
 %name parseForeignKeyClauseDeferrablePart ForeignKeyClauseDeferrablePart
 %name parseMaybeInitialDeferralStatus MaybeInitialDeferralStatus
 %name parseMaybeTransactionType MaybeTransactionType
+%name parseMaybeDatabase MaybeDatabase
 %name parseStatementList StatementList
 %name parseAnyStatement Statement
 %name parseExplainableStatement ExplainableStatement
@@ -724,13 +732,17 @@ MaybeSign :: { MaybeSign }
     | '-'
     { NegativeSign }
 
+MaybeColumn :: { MaybeColumn }
+    :
+    { ElidedColumn }
+    | column
+    { Column }
+
 AlterTableBody :: { AlterTableBody }
     : rename to UnqualifiedIdentifier
     { RenameTo $3 }
-    | add ColumnDefinition
-    { AddColumn False $2 }
-    | add column ColumnDefinition
-    { AddColumn True $3 }
+    | add MaybeColumn ColumnDefinition
+    { AddColumn $2 $3 }
 
 ColumnDefinition :: { ColumnDefinition }
     : UnqualifiedIdentifier ColumnConstraintList
@@ -1210,6 +1222,12 @@ MaybeTransactionType :: { MaybeTransactionType }
     | exclusive
     { Exclusive }
 
+MaybeDatabase :: { MaybeDatabase }
+    :
+    { ElidedDatabase }
+    | database
+    { Database }
+
 StatementList :: { StatementList }
     :
     { StatementList [] }
@@ -1355,10 +1373,8 @@ Analyze :: { Analyze }
     { Analyze $2 }
 
 Attach :: { Attach }
-    : attach string as UnqualifiedIdentifier
-    { Attach False $2 $4 }
-    | attach database string as UnqualifiedIdentifier
-    { Attach True $3 $5 }
+    : attach MaybeDatabase string as UnqualifiedIdentifier
+    { Attach $2 $3 $5 }
 
 Begin :: { Begin }
     : begin MaybeTransactionType
@@ -1573,6 +1589,14 @@ readType :: String -> Either ParseError Type
 readType input = runParse parseType input
 
 
+readMaybeTypeSize :: String -> Either ParseError MaybeTypeSize
+readMaybeTypeSize input = runParse parseMaybeTypeSize input
+
+
+readTypeSizeField :: String -> Either ParseError TypeSizeField
+readTypeSizeField input = runParse parseTypeSizeField input
+
+
 readLikeType :: String -> Either ParseError LikeType
 readLikeType input = runParse parseLikeType input
 
@@ -1615,6 +1639,10 @@ readMaybeAutoincrement input = runParse parseMaybeAutoincrement input
 
 readMaybeSign :: String -> Either ParseError MaybeSign
 readMaybeSign input = runParse parseMaybeSign input
+
+
+readMaybeColumn :: String -> Either ParseError MaybeColumn
+readMaybeColumn input = runParse parseMaybeColumn input
 
 
 readAlterTableBody :: String -> Either ParseError AlterTableBody
@@ -1795,6 +1823,10 @@ readMaybeInitialDeferralStatus input
 
 readMaybeTransactionType :: String -> Either ParseError MaybeTransactionType
 readMaybeTransactionType input = runParse parseMaybeTransactionType input
+
+
+readMaybeDatabase :: String -> Either ParseError MaybeDatabase
+readMaybeDatabase input = runParse parseMaybeDatabase input
 
 
 readStatementList :: String -> Either ParseError StatementList
