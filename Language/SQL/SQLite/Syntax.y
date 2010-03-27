@@ -59,6 +59,7 @@ module Language.SQL.SQLite.Syntax (
                                    readForeignKeyClauseActionPart,
                                    readForeignKeyClauseDeferrablePart,
                                    readMaybeInitialDeferralStatus,
+                                   readMaybeTransaction,
                                    readMaybeTransactionType,
                                    readMaybeDatabase,
                                    readStatementList,
@@ -170,6 +171,7 @@ import Language.SQL.SQLite.Types
 %name parseForeignKeyClauseActionPart ForeignKeyClauseActionPart
 %name parseForeignKeyClauseDeferrablePart ForeignKeyClauseDeferrablePart
 %name parseMaybeInitialDeferralStatus MaybeInitialDeferralStatus
+%name parseMaybeTransaction MaybeTransaction
 %name parseMaybeTransactionType MaybeTransactionType
 %name parseMaybeDatabase MaybeDatabase
 %name parseStatementList StatementList
@@ -1212,6 +1214,12 @@ MaybeInitialDeferralStatus :: { MaybeInitialDeferralStatus }
     | initially immediate
     { InitiallyImmediate }
 
+MaybeTransaction :: { MaybeTransaction }
+    :
+    { ElidedTransaction }
+    | transaction
+    { Transaction }
+
 MaybeTransactionType :: { MaybeTransactionType }
     :
     { NoTransactionType }
@@ -1377,20 +1385,14 @@ Attach :: { Attach }
     { Attach $2 $3 $5 }
 
 Begin :: { Begin }
-    : begin MaybeTransactionType
-    { Begin $2 False }
-    | begin MaybeTransactionType transaction
-    { Begin $2 True }
+    : begin MaybeTransactionType MaybeTransaction
+    { Begin $2 $3 }
 
 Commit :: { Commit }
-    : commit
-    { Commit False False }
-    | commit transaction
-    { Commit False True }
-    | end
-    { Commit True False }
-    | end transaction
-    { Commit True True}
+    : commit MaybeTransaction
+    { Commit False $2 }
+    | end MaybeTransaction
+    { Commit True $2 }
 
 CreateIndex :: { CreateIndex }
     : create MaybeUnique index MaybeIfNotExists SinglyQualifiedIdentifier on
@@ -1472,18 +1474,12 @@ Release :: { Release }
     { Release True $3 }
 
 Rollback :: { Rollback }
-    : rollback
-    { Rollback False Nothing }
-    | rollback transaction
-    { Rollback True Nothing }
-    | rollback to UnqualifiedIdentifier
-    { Rollback False (Just (False, $3)) }
-    | rollback to savepoint UnqualifiedIdentifier
-    { Rollback False (Just (True, $4)) }
-    | rollback transaction to UnqualifiedIdentifier
-    { Rollback True (Just (False, $4)) }
-    | rollback transaction to savepoint UnqualifiedIdentifier
-    { Rollback True (Just (True, $5)) }
+    : rollback MaybeTransaction
+    { Rollback $2 Nothing }
+    | rollback MaybeTransaction to UnqualifiedIdentifier
+    { Rollback $2 (Just (False, $4)) }
+    | rollback MaybeTransaction to savepoint UnqualifiedIdentifier
+    { Rollback $2 (Just (True, $5)) }
 
 Savepoint :: { Savepoint }
     : savepoint UnqualifiedIdentifier
@@ -1819,6 +1815,10 @@ readMaybeInitialDeferralStatus
     :: String -> Either ParseError MaybeInitialDeferralStatus
 readMaybeInitialDeferralStatus input
     = runParse parseMaybeInitialDeferralStatus input
+
+
+readMaybeTransaction :: String -> Either ParseError MaybeTransaction
+readMaybeTransaction input = runParse parseMaybeTransaction input
 
 
 readMaybeTransactionType :: String -> Either ParseError MaybeTransactionType

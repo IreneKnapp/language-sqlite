@@ -38,7 +38,7 @@ changeTableSchema oldDefinition newDefinition columnDefaultMap
           columnDefault column = maybe ExpressionLiteralNull
                                        id
                                        $ Map.lookup column columnDefaultMap
-          beginTransactionStatement = Begin NoTransactionType True
+          beginTransactionStatement = Begin NoTransactionType Transaction
           createTemporaryStatement
               = CreateTable
                   Temporary
@@ -85,7 +85,7 @@ changeTableSchema oldDefinition newDefinition columnDefaultMap
                                                  Nothing)
                                      [] Nothing Nothing)
           dropTemporaryStatement = DropTable NoIfExists temporaryName
-          commitTransactionStatement = Commit False True
+          commitTransactionStatement = Commit False Transaction
           statementList = StatementList [Statement beginTransactionStatement,
                                          Statement createTemporaryStatement,
                                          Statement dropStatement,

@@ -63,6 +63,7 @@ module Language.SQL.SQLite.Types (
                                   ForeignKeyClauseActionPart(..),
                                   ForeignKeyClauseDeferrablePart(..),
                                   MaybeInitialDeferralStatus(..),
+                                  MaybeTransaction(..),
                                   MaybeTransactionType(..),
                                   MaybeDatabase(..),
                                   StatementList(..),
@@ -1223,6 +1224,12 @@ instance ShowTokens MaybeInitialDeferralStatus where
     showTokens InitiallyDeferred = [KeywordInitially, KeywordDeferred]
     showTokens InitiallyImmediate = [KeywordInitially, KeywordImmediate]
 
+data MaybeTransaction = ElidedTransaction | Transaction
+                        deriving (Eq, Show)
+instance ShowTokens MaybeTransaction where
+    showTokens ElidedTransaction = []
+    showTokens Transaction = [KeywordTransaction]
+
 data MaybeTransactionType
     = NoTransactionType
     | Deferred
@@ -1604,11 +1611,11 @@ data Statement level triggerable valueReturning which where
         -> Statement L0 NT NS Attach'
     Begin
         :: MaybeTransactionType
-        -> Bool
+        -> MaybeTransaction
         -> Statement L0 NT NS Begin'
     Commit
         :: Bool
-        -> Bool
+        -> MaybeTransaction
         -> Statement L0 NT NS Commit'
     CreateIndex
         :: MaybeUnique
@@ -1692,7 +1699,7 @@ data Statement level triggerable valueReturning which where
         -> UnqualifiedIdentifier
         -> Statement L0 NT NS Release'
     Rollback
-        :: Bool
+        :: MaybeTransaction
         -> (Maybe (Bool, UnqualifiedIdentifier))
         -> Statement L0 NT NS Rollback'
     Savepoint
@@ -1743,19 +1750,15 @@ instance ShowTokens (Statement l t v w) where
           ++ showTokens maybeDatabase
           ++ [LiteralString filename, KeywordAs]
           ++ showTokens databaseName
-    showTokens (Begin maybeTransactionType transactionKeywordPresent)
+    showTokens (Begin maybeTransactionType maybeTransaction)
         = [KeywordBegin]
           ++ showTokens maybeTransactionType
-          ++ (if transactionKeywordPresent
-                 then [KeywordTransaction]
-                 else [])
-    showTokens (Commit endKeywordInsteadOfCommitKeyword transactionKeywordPresent)
+          ++ showTokens maybeTransaction
+    showTokens (Commit endKeywordInsteadOfCommitKeyword maybeTransaction)
         = (if endKeywordInsteadOfCommitKeyword
              then [KeywordEnd]
              else [KeywordCommit])
-          ++ (if transactionKeywordPresent
-                 then [KeywordTransaction]
-                 else [])
+          ++ showTokens maybeTransaction
     showTokens (CreateIndex maybeUnique maybeIfNotExists indexName tableName
                             indexedColumns)
         = [KeywordCreate]
@@ -1867,11 +1870,9 @@ instance ShowTokens (Statement l t v w) where
                 then [KeywordSavepoint]
                 else [])
           ++ showTokens savepointName
-    showTokens (Rollback transactionKeywordPresent maybeSavepoint)
+    showTokens (Rollback maybeTransaction maybeSavepoint)
         = [KeywordRollback]
-          ++ (if transactionKeywordPresent
-                then [KeywordTransaction]
-                else [])
+          ++ showTokens maybeTransaction
           ++ (case maybeSavepoint of
                 Nothing -> []
                 Just (savepointKeywordPresent, savepointName) ->
