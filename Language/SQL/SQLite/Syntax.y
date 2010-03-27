@@ -6,6 +6,8 @@ module Language.SQL.SQLite.Syntax (
                                    readMaybeTypeSize,
                                    readTypeSizeField,
                                    readLikeType,
+                                   readCasePair,
+                                   readElse,
                                    readExpression,
                                    readMaybeUnique,
                                    readMaybeIfNotExists,
@@ -120,6 +122,8 @@ import Language.SQL.SQLite.Types
 %name parseMaybeTypeSize MaybeTypeSize
 %name parseTypeSizeField TypeSizeField
 %name parseLikeType LikeType
+%name parseCasePair CasePair
+%name parseElse Else
 %name parseExpression Expression
 %name parseMaybeUnique MaybeUnique
 %name parseMaybeIfNotExists MaybeIfNotExists
@@ -493,14 +497,10 @@ Expression2 :: { Expression }
 Expression3 :: { Expression }
     : Expression2 %prec LOOSER_THAN_COLLATE
     { $1 }
-    | case CaseList end
-    { ExpressionCase Nothing (fromJust $ mkOneOrMore $2) Nothing }
-    | case CaseList else Expression end
-    { ExpressionCase Nothing (fromJust $ mkOneOrMore $2) (Just $4) }
-    | case Expression CaseList end
-    { ExpressionCase (Just $2) (fromJust $ mkOneOrMore $3) Nothing }
-    | case Expression CaseList else Expression end
-    { ExpressionCase (Just $2) (fromJust $ mkOneOrMore $3) (Just $5) }
+    | case CaseList Else end
+    { ExpressionCase Nothing (fromJust $ mkOneOrMore $2) $3 }
+    | case Expression CaseList Else end
+    { ExpressionCase (Just $2) (fromJust $ mkOneOrMore $3) $4 }
 
 Expression4 :: { Expression }
     : Expression3
@@ -672,11 +672,21 @@ OneOrMoreSetPair :: { [(UnqualifiedIdentifier, Expression)] }
     | OneOrMoreSetPair ',' UnqualifiedIdentifier '=' Expression
     { $1 ++ [($3, $5)] }
 
-CaseList :: { [(Expression, Expression)] }
+CaseList :: { [CasePair] }
+    : CasePair
+    { [$1] }
+    | CaseList CasePair
+    { $1 ++ [$2] }
+
+CasePair :: { CasePair }
     : when Expression then Expression
-    { [($2, $4)] }
-    | CaseList when Expression then Expression
-    { $1 ++ [($3, $5)] }
+    { WhenThen $2 $4 }
+
+Else :: { Else }
+    :
+    { NoElse }
+    | else Expression
+    { Else $2 }
 
 MaybeUnique :: { MaybeUnique }
     :
@@ -1607,6 +1617,14 @@ readTypeSizeField input = runParse parseTypeSizeField input
 
 readLikeType :: String -> Either ParseError LikeType
 readLikeType input = runParse parseLikeType input
+
+
+readCasePair :: String -> Either ParseError CasePair
+readCasePair input = runParse parseCasePair input
+
+
+readElse :: String -> Either ParseError Else
+readElse input = runParse parseElse input
 
 
 readExpression :: String -> Either ParseError Expression

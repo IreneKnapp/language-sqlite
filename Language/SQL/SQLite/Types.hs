@@ -12,6 +12,8 @@ module Language.SQL.SQLite.Types (
                                   MaybeTypeSize(..),
                                   TypeSizeField(..),
                                   LikeType(..),
+                                  CasePair(..),
+                                  Else(..),
                                   Expression(..),
                                   MaybeUnique(..),
                                   MaybeIfNotExists(..),
@@ -218,6 +220,22 @@ instance ShowTokens LikeType where
     showTokens Match = [KeywordMatch]
     showTokens NotMatch = [KeywordNot, KeywordMatch]
 
+data CasePair = WhenThen Expression Expression
+                deriving (Eq, Show)
+instance ShowTokens CasePair where
+    showTokens (WhenThen condition result)
+        = [KeywordWhen]
+          ++ showTokens condition
+          ++ [KeywordThen]
+          ++ showTokens result
+
+data Else = NoElse
+          | Else Expression
+            deriving (Eq, Show)
+instance ShowTokens Else where
+    showTokens NoElse = []
+    showTokens (Else expression) = [KeywordElse] ++ showTokens expression
+
 data Expression = ExpressionLiteralInteger Word64
                 | ExpressionLiteralFloat NonnegativeDouble
                 | ExpressionLiteralString String
@@ -278,8 +296,8 @@ data Expression = ExpressionLiteralInteger Word64
                 | ExpressionExistsSubquery (Select)
                 | ExpressionNotExistsSubquery (Select)
                 | ExpressionCase (Maybe Expression)
-                                 (OneOrMore (Expression, Expression))
-                                 (Maybe Expression)
+                                 (OneOrMore CasePair)
+                                 Else
                 | ExpressionRaiseIgnore
                 | ExpressionRaiseRollback String
                 | ExpressionRaiseAbort String
@@ -466,43 +484,16 @@ instance ShowTokens Expression where
         = [KeywordNot, KeywordExists, PunctuationLeftParenthesis]
           ++ showTokens statement
           ++ [PunctuationRightParenthesis]
-    showTokens (ExpressionCase Nothing cases Nothing)
+    showTokens (ExpressionCase Nothing cases else')
         = [KeywordCase]
-          ++ (concat $ mapOneOrMore (\(condition, result) -> [KeywordWhen]
-                                                             ++ showTokens condition
-                                                             ++ [KeywordThen]
-                                                             ++ showTokens result)
-                                    cases)
+          ++ (concat $ mapOneOrMore showTokens cases)
+          ++ showTokens else'
           ++ [KeywordEnd]
-    showTokens (ExpressionCase Nothing cases (Just defaultResult))
-        = [KeywordCase]
-          ++ (concat $ mapOneOrMore (\(condition, result) -> [KeywordWhen]
-                                                             ++ showTokens condition
-                                                             ++ [KeywordThen]
-                                                             ++ showTokens result)
-                                    cases)
-          ++ [KeywordElse]
-          ++ showTokens defaultResult
-          ++ [KeywordEnd]
-    showTokens (ExpressionCase (Just expression) cases Nothing)
+    showTokens (ExpressionCase (Just expression) cases else')
         = [KeywordCase]
           ++ showTokens expression
-          ++ (concat $ mapOneOrMore (\(condition, result) -> [KeywordWhen]
-                                                             ++ showTokens condition
-                                                             ++ [KeywordThen]
-                                                             ++ showTokens result)
-                                    cases)
-          ++ [KeywordEnd]
-    showTokens (ExpressionCase (Just expression) cases (Just defaultResult))
-        = [KeywordCase]
-          ++ showTokens expression
-          ++ (concat $ mapOneOrMore (\(condition, result) -> [KeywordWhen]
-                                                             ++ showTokens condition
-                                                             ++ [KeywordThen]
-                                                             ++ showTokens result)
-                                    cases)
-          ++ [KeywordElse]
-          ++ showTokens defaultResult
+          ++ (concat $ mapOneOrMore showTokens cases)
+          ++ showTokens else'
           ++ [KeywordEnd]
     showTokens (ExpressionRaiseIgnore)
         = [KeywordRaise,
