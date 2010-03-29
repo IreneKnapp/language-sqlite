@@ -1700,7 +1700,7 @@ data Statement level triggerable valueReturning which where
         -> LimitClause
         -> Statement L0 NT NS DeleteLimited'
     Detach
-        :: Bool
+        :: MaybeDatabase
         -> UnqualifiedIdentifier
         -> Statement L0 NT NS Detach'
     DropIndex
@@ -1865,11 +1865,9 @@ instance ShowTokens (Statement l t v w) where
                 Nothing -> []
                 Just orderClause -> showTokens orderClause)
           ++ showTokens limitClause
-    showTokens (Detach databaseKeywordPresent databaseName)
+    showTokens (Detach maybeDatabase databaseName)
         = [KeywordDetach]
-          ++ (if databaseKeywordPresent
-                then [KeywordDatabase]
-                else [])
+          ++ showTokens maybeDatabase
           ++ showTokens databaseName
     showTokens (DropIndex maybeIfExists indexName)
         = [KeywordDrop, KeywordIndex]

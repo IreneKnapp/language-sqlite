@@ -1482,10 +1482,8 @@ DeleteOrDeleteLimited :: { AnyStatement }
     { Statement $1 }
 
 Detach :: { Detach }
-    : detach UnqualifiedIdentifier
-    { Detach False $2 }
-    | detach database UnqualifiedIdentifier
-    { Detach True $3 }
+    : detach MaybeDatabase UnqualifiedIdentifier
+    { Detach $2 $3 }
 
 DropIndex :: { DropIndex }
     : drop index MaybeIfExists SinglyQualifiedIdentifier
