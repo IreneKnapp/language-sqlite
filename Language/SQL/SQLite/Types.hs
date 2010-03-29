@@ -9,6 +9,7 @@ module Language.SQL.SQLite.Types (
                                   mkNonnegativeDouble,
                                   fromNonnegativeDouble,
                                   Type(..),
+                                  MaybeType(..),
                                   MaybeTypeSize(..),
                                   TypeSizeField(..),
                                   LikeType(..),
@@ -171,6 +172,13 @@ instance ShowTokens Type where
     showTokens (Type name maybeTypeSize)
         = showTokens name
           ++ showTokens maybeTypeSize
+
+
+data MaybeType = NoType | JustType Type
+                 deriving (Eq, Show)
+instance ShowTokens MaybeType where
+    showTokens NoType = []
+    showTokens (JustType type') = showTokens type'
 
 
 data MaybeTypeSize = NoTypeSize
@@ -610,14 +618,12 @@ instance ShowTokens AlterTableBody where
           ++ showTokens columnDefinition
 
 data ColumnDefinition
-    = ColumnDefinition UnqualifiedIdentifier (Maybe Type) [ColumnConstraint]
+    = ColumnDefinition UnqualifiedIdentifier MaybeType [ColumnConstraint]
       deriving (Eq, Show)
 instance ShowTokens ColumnDefinition where
     showTokens (ColumnDefinition name maybeType constraints)
         = showTokens name
-          ++ (case maybeType of
-                Nothing -> []
-                Just typeName -> showTokens typeName)
+          ++ showTokens maybeType
           ++ (concat $ map showTokens constraints)
 
 data DefaultValue

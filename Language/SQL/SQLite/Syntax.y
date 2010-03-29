@@ -3,6 +3,7 @@
 module Language.SQL.SQLite.Syntax (
                                    ParseError,
                                    readType,
+                                   readMaybeType,
                                    readMaybeTypeSize,
                                    readTypeSizeField,
                                    readLikeType,
@@ -121,6 +122,7 @@ import Language.SQL.SQLite.Types
 }
 
 %name parseType Type
+%name parseMaybeType MaybeType
 %name parseMaybeTypeSize MaybeTypeSize
 %name parseTypeSizeField TypeSizeField
 %name parseLikeType LikeType
@@ -411,6 +413,12 @@ import Language.SQL.SQLite.Types
 Type :: { Type }
     : UnqualifiedIdentifier MaybeTypeSize
     { Type $1 $2 }
+
+MaybeType :: { MaybeType }
+    :
+    { NoType }
+    | Type
+    { JustType $1 }
 
 MaybeTypeSize :: { MaybeTypeSize }
     :
@@ -773,10 +781,8 @@ AlterTableBody :: { AlterTableBody }
     { AddColumn $2 $3 }
 
 ColumnDefinition :: { ColumnDefinition }
-    : UnqualifiedIdentifier ColumnConstraintList
-    { ColumnDefinition $1 Nothing $2 }
-    | UnqualifiedIdentifier Type ColumnConstraintList
-    { ColumnDefinition $1 (Just $2) $3 }
+    : UnqualifiedIdentifier MaybeType ColumnConstraintList
+    { ColumnDefinition $1 $2 $3 }
 
 OneOrMoreColumnDefinition :: { [ColumnDefinition] }
     : ColumnDefinition
@@ -1613,6 +1619,10 @@ putParseState state = lift $ put state
 
 readType :: String -> Either ParseError Type
 readType input = runParse parseType input
+
+
+readMaybeType :: String -> Either ParseError MaybeType
+readMaybeType input = runParse parseMaybeType input
 
 
 readMaybeTypeSize :: String -> Either ParseError MaybeTypeSize
