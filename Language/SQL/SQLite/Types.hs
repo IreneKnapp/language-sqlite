@@ -68,6 +68,7 @@ module Language.SQL.SQLite.Types (
                                   ForeignKeyClauseActionPart(..),
                                   MaybeForeignKeyClauseDeferrablePart(..),
                                   MaybeInitialDeferralStatus(..),
+                                  CommitHead(..),
                                   MaybeTransaction(..),
                                   MaybeTransactionType(..),
                                   MaybeDatabase(..),
@@ -1229,6 +1230,14 @@ instance ShowTokens MaybeInitialDeferralStatus where
     showTokens InitiallyDeferred = [KeywordInitially, KeywordDeferred]
     showTokens InitiallyImmediate = [KeywordInitially, KeywordImmediate]
 
+data CommitHead
+    = CommitCommit
+    | CommitEnd
+      deriving (Eq, Show)
+instance ShowTokens CommitHead where
+    showTokens CommitCommit = [KeywordCommit]
+    showTokens CommitEnd = [KeywordEnd]
+
 data MaybeTransaction = ElidedTransaction | Transaction
                         deriving (Eq, Show)
 instance ShowTokens MaybeTransaction where
@@ -1642,7 +1651,7 @@ data Statement level triggerable valueReturning which where
         -> MaybeTransaction
         -> Statement L0 NT NS Begin'
     Commit
-        :: Bool
+        :: CommitHead
         -> MaybeTransaction
         -> Statement L0 NT NS Commit'
     CreateIndex
@@ -1782,10 +1791,8 @@ instance ShowTokens (Statement l t v w) where
         = [KeywordBegin]
           ++ showTokens maybeTransactionType
           ++ showTokens maybeTransaction
-    showTokens (Commit endKeywordInsteadOfCommitKeyword maybeTransaction)
-        = (if endKeywordInsteadOfCommitKeyword
-             then [KeywordEnd]
-             else [KeywordCommit])
+    showTokens (Commit commitHead maybeTransaction)
+        = showTokens commitHead
           ++ showTokens maybeTransaction
     showTokens (CreateIndex maybeUnique maybeIfNotExists indexName tableName
                             indexedColumns)

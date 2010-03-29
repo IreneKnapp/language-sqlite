@@ -64,6 +64,7 @@ module Language.SQL.SQLite.Syntax (
                                    readForeignKeyClauseActionPart,
                                    readMaybeForeignKeyClauseDeferrablePart,
                                    readMaybeInitialDeferralStatus,
+                                   readCommitHead,
                                    readMaybeTransaction,
                                    readMaybeTransactionType,
                                    readMaybeDatabase,
@@ -183,6 +184,7 @@ import Language.SQL.SQLite.Types
 %name parseForeignKeyClauseActionPart ForeignKeyClauseActionPart
 %name parseMaybeForeignKeyClauseDeferrablePart MaybeForeignKeyClauseDeferrablePart
 %name parseMaybeInitialDeferralStatus MaybeInitialDeferralStatus
+%name parseCommitHead CommitHead
 %name parseMaybeTransaction MaybeTransaction
 %name parseMaybeTransactionType MaybeTransactionType
 %name parseMaybeDatabase MaybeDatabase
@@ -1242,6 +1244,12 @@ MaybeInitialDeferralStatus :: { MaybeInitialDeferralStatus }
     | initially immediate
     { InitiallyImmediate }
 
+CommitHead :: { CommitHead }
+    : commit
+    { CommitCommit }
+    | end
+    { CommitEnd }
+
 MaybeTransaction :: { MaybeTransaction }
     :
     { ElidedTransaction }
@@ -1431,10 +1439,8 @@ Begin :: { Begin }
     { Begin $2 $3 }
 
 Commit :: { Commit }
-    : commit MaybeTransaction
-    { Commit False $2 }
-    | end MaybeTransaction
-    { Commit True $2 }
+    : CommitHead MaybeTransaction
+    { Commit $1 $2 }
 
 CreateIndex :: { CreateIndex }
     : create MaybeUnique index MaybeIfNotExists SinglyQualifiedIdentifier on
@@ -1871,6 +1877,10 @@ readMaybeInitialDeferralStatus
     :: String -> Either ParseError MaybeInitialDeferralStatus
 readMaybeInitialDeferralStatus input
     = runParse parseMaybeInitialDeferralStatus input
+
+
+readCommitHead :: String -> Either ParseError CommitHead
+readCommitHead input = runParse parseCommitHead input
 
 
 readMaybeTransaction :: String -> Either ParseError MaybeTransaction

@@ -85,7 +85,7 @@ changeTableSchema oldDefinition newDefinition columnDefaultMap
                                                  Nothing)
                                      [] Nothing Nothing)
           dropTemporaryStatement = DropTable NoIfExists temporaryName
-          commitTransactionStatement = Commit False Transaction
+          commitTransactionStatement = Commit CommitCommit Transaction
           statementList = StatementList [Statement beginTransactionStatement,
                                          Statement createTemporaryStatement,
                                          Statement dropStatement,
