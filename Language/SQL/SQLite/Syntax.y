@@ -28,6 +28,7 @@ module Language.SQL.SQLite.Syntax (
                                    readIndexedColumn,
                                    readColumnConstraint,
                                    readTableConstraint,
+                                   readMaybeConstraintName,
                                    readTriggerTime,
                                    readTriggerCondition,
                                    -- TODO remember to uncomment this
@@ -148,6 +149,7 @@ import Language.SQL.SQLite.Types
 %name parseIndexedColumn IndexedColumn
 %name parseColumnConstraint ColumnConstraint
 %name parseTableConstraint TableConstraint
+%name parseMaybeConstraintName MaybeConstraintName
 %name parseTriggerTime TriggerTime
 %name parseTriggerCondition TriggerCondition
 -- %name parseModuleArgument ModuleArgument
@@ -822,11 +824,11 @@ OneOrMoreIndexedColumn :: { [IndexedColumn] }
     | OneOrMoreIndexedColumn ',' IndexedColumn
     { $1 ++ [$3] }
 
-MaybeConstraintName :: { Maybe UnqualifiedIdentifier }
+MaybeConstraintName :: { MaybeConstraintName }
     :
-    { Nothing }
+    { NoConstraintName }
     | constraint UnqualifiedIdentifier
-    { Just $2 }
+    { ConstraintName $2 }
 
 ColumnConstraint :: { ColumnConstraint }
     : MaybeConstraintName primary key MaybeAscDesc MaybeConflictClause
@@ -1723,6 +1725,10 @@ readColumnConstraint input = runParse parseColumnConstraint input
 
 readTableConstraint :: String -> Either ParseError TableConstraint
 readTableConstraint input = runParse parseTableConstraint input
+
+
+readMaybeConstraintName :: String -> Either ParseError MaybeConstraintName
+readMaybeConstraintName input = runParse parseMaybeConstraintName input
 
 
 readTriggerTime :: String -> Either ParseError TriggerTime

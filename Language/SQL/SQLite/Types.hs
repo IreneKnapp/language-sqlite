@@ -34,6 +34,7 @@ module Language.SQL.SQLite.Types (
                                   IndexedColumn(..),
                                   ColumnConstraint(..),
                                   TableConstraint(..),
+                                  MaybeConstraintName(..),
                                   TriggerTime(..),
                                   TriggerCondition(..),
                                   ModuleArgument(..),
@@ -672,26 +673,23 @@ instance ShowTokens IndexedColumn where
           ++ showTokens maybeAscDesc
 
 data ColumnConstraint
-    = ColumnPrimaryKey (Maybe UnqualifiedIdentifier)
+    = ColumnPrimaryKey MaybeConstraintName
                        MaybeAscDesc
                        (Maybe ConflictClause)
                        MaybeAutoincrement
-    | ColumnNotNull (Maybe UnqualifiedIdentifier) (Maybe ConflictClause)
-    | ColumnUnique (Maybe UnqualifiedIdentifier) (Maybe ConflictClause)
-    | ColumnCheck (Maybe UnqualifiedIdentifier) Expression
-    | ColumnDefault (Maybe UnqualifiedIdentifier) DefaultValue
-    | ColumnCollate (Maybe UnqualifiedIdentifier) UnqualifiedIdentifier
-    | ColumnForeignKey (Maybe UnqualifiedIdentifier) ForeignKeyClause
+    | ColumnNotNull MaybeConstraintName (Maybe ConflictClause)
+    | ColumnUnique MaybeConstraintName (Maybe ConflictClause)
+    | ColumnCheck MaybeConstraintName Expression
+    | ColumnDefault MaybeConstraintName DefaultValue
+    | ColumnCollate MaybeConstraintName UnqualifiedIdentifier
+    | ColumnForeignKey MaybeConstraintName ForeignKeyClause
       deriving (Eq, Show)
 instance ShowTokens ColumnConstraint where
     showTokens (ColumnPrimaryKey maybeConstraintName
                                  maybeAscDesc
                                  maybeConflictClause
                                  maybeAutoincrement)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ [KeywordPrimary, KeywordKey]
           ++ showTokens maybeAscDesc
           ++ (case maybeConflictClause of
@@ -699,71 +697,50 @@ instance ShowTokens ColumnConstraint where
                 Just conflictClause -> showTokens conflictClause)
           ++ showTokens maybeAutoincrement
     showTokens (ColumnNotNull maybeConstraintName maybeConflictClause)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ [KeywordNot, KeywordNull]
           ++ (case maybeConflictClause of
                 Nothing -> []
                 Just conflictClause -> showTokens conflictClause)
     showTokens (ColumnUnique maybeConstraintName maybeConflictClause)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ [KeywordUnique]
           ++ (case maybeConflictClause of
                 Nothing -> []
                 Just conflictClause -> showTokens conflictClause)
     showTokens (ColumnCheck maybeConstraintName expression)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ [KeywordCheck, PunctuationLeftParenthesis]
           ++ showTokens expression
           ++ [PunctuationRightParenthesis]
     showTokens (ColumnDefault maybeConstraintName defaultValue)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ [KeywordDefault]
           ++ showTokens defaultValue
     showTokens (ColumnCollate maybeConstraintName collationName)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ [KeywordCollate]
           ++ showTokens collationName
     showTokens (ColumnForeignKey maybeConstraintName foreignKeyClause)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ showTokens foreignKeyClause
 
 data TableConstraint
-    = TablePrimaryKey (Maybe UnqualifiedIdentifier)
+    = TablePrimaryKey MaybeConstraintName
                       (OneOrMore IndexedColumn)
                       (Maybe ConflictClause)
-    | TableUnique (Maybe UnqualifiedIdentifier)
+    | TableUnique MaybeConstraintName
                   (OneOrMore IndexedColumn)
                   (Maybe ConflictClause)
-    | TableCheck (Maybe UnqualifiedIdentifier)
+    | TableCheck MaybeConstraintName
                  Expression
-    | TableForeignKey (Maybe UnqualifiedIdentifier)
+    | TableForeignKey MaybeConstraintName
                       (OneOrMore UnqualifiedIdentifier)
                       ForeignKeyClause
       deriving (Eq, Show)
 instance ShowTokens TableConstraint where
     showTokens (TablePrimaryKey maybeConstraintName indexedColumns maybeConflictClause)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ [KeywordPrimary, KeywordKey, PunctuationLeftParenthesis]
           ++ (intercalate [PunctuationComma] $ mapOneOrMore showTokens indexedColumns)
           ++ [PunctuationRightParenthesis]
@@ -771,10 +748,7 @@ instance ShowTokens TableConstraint where
                 Nothing -> []
                 Just conflictClause -> showTokens conflictClause)
     showTokens (TableUnique maybeConstraintName indexedColumns maybeConflictClause)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ [KeywordUnique, PunctuationLeftParenthesis]
           ++ (intercalate [PunctuationComma] $ mapOneOrMore showTokens indexedColumns)
           ++ [PunctuationRightParenthesis]
@@ -782,22 +756,25 @@ instance ShowTokens TableConstraint where
                 Nothing -> []
                 Just conflictClause -> showTokens conflictClause)
     showTokens (TableCheck maybeConstraintName expression)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ [KeywordCheck, PunctuationLeftParenthesis]
           ++ showTokens expression
           ++ [PunctuationRightParenthesis]
     showTokens (TableForeignKey maybeConstraintName columns foreignKeyClause)
-        = (case maybeConstraintName of
-             Nothing -> []
-             Just constraintName -> [KeywordConstraint]
-                                    ++ showTokens constraintName)
+        = showTokens maybeConstraintName
           ++ [KeywordForeign, KeywordKey, PunctuationLeftParenthesis]
           ++ (intercalate [PunctuationComma] $ mapOneOrMore showTokens columns)
           ++ [PunctuationRightParenthesis]
           ++ showTokens foreignKeyClause
+
+data MaybeConstraintName = NoConstraintName
+                         | ConstraintName UnqualifiedIdentifier
+                           deriving (Eq, Show)
+instance ShowTokens MaybeConstraintName where
+    showTokens NoConstraintName = []
+    showTokens (ConstraintName constraintName)
+        = [KeywordConstraint]
+          ++ showTokens constraintName
 
 data TriggerTime = Before | After | InsteadOf
                    deriving (Eq, Show)
