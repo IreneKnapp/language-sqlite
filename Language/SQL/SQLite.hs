@@ -1,6 +1,7 @@
 module Language.SQL.SQLite (
-                            module Language.SQL.SQLite.Types,
-                            module Language.SQL.SQLite.Syntax
+                            -- * Parsing
+                            module Language.SQL.SQLite.Syntax,
+                            module Language.SQL.SQLite.Types
                            )
     where
 

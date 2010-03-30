@@ -16,7 +16,7 @@ module Language.SQL.SQLite.Syntax (
                                    readMaybeIfNotExists,
                                    readMaybeIfExists,
                                    readMaybeForEachRow,
-                                   readPermanence,
+                                   readMaybeTemporary,
                                    readMaybeCollation,
                                    readMaybeAscDesc,
                                    readMaybeAutoincrement,
@@ -38,7 +38,7 @@ module Language.SQL.SQLite.Syntax (
                                    readOrderingTerm,
                                    readPragmaBody,
                                    readPragmaValue,
-                                   readEitherColumnsAndConstraintsSelect,
+                                   readCreateTableBody,
                                    readInsertHead,
                                    readInsertBody,
                                    readUpdateHead,
@@ -137,7 +137,7 @@ import Language.SQL.SQLite.Types
 %name parseMaybeIfNotExists MaybeIfNotExists
 %name parseMaybeIfExists MaybeIfExists
 %name parseMaybeForEachRow MaybeForEachRow
-%name parsePermanence Permanence
+%name parseMaybeTemporary MaybeTemporary
 %name parseMaybeCollation MaybeCollation
 %name parseMaybeAscDesc MaybeAscDesc
 %name parseMaybeAutoincrement MaybeAutoincrement
@@ -159,7 +159,7 @@ import Language.SQL.SQLite.Types
 %name parseOrderingTerm OrderingTerm
 %name parsePragmaBody PragmaBody
 %name parsePragmaValue PragmaValue
-%name parseEitherColumnsAndConstraintsSelect EitherColumnsAndConstraintsSelect
+%name parseCreateTableBody CreateTableBody
 %name parseInsertHead InsertHead
 %name parseInsertBody InsertBody
 %name parseUpdateHead UpdateHead
@@ -736,9 +736,9 @@ MaybeForEachRow :: { MaybeForEachRow }
     | for each row
     { ForEachRow }
 
-Permanence :: { Permanence }
+MaybeTemporary :: { MaybeTemporary }
     :
-    { Permanent }
+    { NoTemporary }
     | temp
     { Temp }
     | temporary
@@ -870,7 +870,7 @@ OneOrMoreTableConstraint :: { [TableConstraint] }
     | OneOrMoreTableConstraint ',' TableConstraint
     { $1 ++ [$3] }
 
-EitherColumnsAndConstraintsSelect :: { EitherColumnsAndConstraintsSelect }
+CreateTableBody :: { CreateTableBody }
     : '(' OneOrMoreColumnDefinition ')'
     { ColumnsAndConstraints (fromJust $ mkOneOrMore $2) [] }
     | '(' OneOrMoreColumnDefinition ',' OneOrMoreTableConstraint ')'
@@ -1450,18 +1450,18 @@ CreateIndex :: { CreateIndex }
     { CreateIndex $2 $4 $5 $7 (fromJust $ mkOneOrMore $9) }
 
 CreateTable :: { CreateTable }
-    : create Permanence table MaybeIfNotExists SinglyQualifiedIdentifier
-      EitherColumnsAndConstraintsSelect
+    : create MaybeTemporary table MaybeIfNotExists SinglyQualifiedIdentifier
+      CreateTableBody
     { CreateTable $2 $4 $5 $6 }
 
 CreateTrigger :: { CreateTrigger }
-    : create Permanence trigger MaybeIfNotExists SinglyQualifiedIdentifier
+    : create MaybeTemporary trigger MaybeIfNotExists SinglyQualifiedIdentifier
       TriggerTime TriggerCondition UnqualifiedIdentifier MaybeForEachRow
       MaybeWhenClause begin OneOrMoreTriggerStatement ';' end
     { CreateTrigger $2 $4 $5 $6 $7 $8 $9 $10 (fromJust $ mkOneOrMore $12) }
 
 CreateView :: { CreateView }
-    : create Permanence view MaybeIfNotExists SinglyQualifiedIdentifier as Select
+    : create MaybeTemporary view MaybeIfNotExists SinglyQualifiedIdentifier as Select
     { CreateView $2 $4 $5 $7 }
 
 -- CreateVirtualTable :: { CreateVirtualTable }
@@ -1679,8 +1679,8 @@ readMaybeForEachRow :: String -> Either ParseError MaybeForEachRow
 readMaybeForEachRow input = runParse parseMaybeForEachRow input
 
 
-readPermanence :: String -> Either ParseError Permanence
-readPermanence input = runParse parsePermanence input
+readMaybeTemporary :: String -> Either ParseError MaybeTemporary
+readMaybeTemporary input = runParse parseMaybeTemporary input
 
 
 readMaybeCollation :: String -> Either ParseError MaybeCollation
@@ -1765,10 +1765,10 @@ readPragmaValue :: String -> Either ParseError PragmaValue
 readPragmaValue input = runParse parsePragmaValue input
 
 
-readEitherColumnsAndConstraintsSelect
-    :: String -> Either ParseError EitherColumnsAndConstraintsSelect
-readEitherColumnsAndConstraintsSelect input
-    = runParse parseEitherColumnsAndConstraintsSelect input
+readCreateTableBody
+    :: String -> Either ParseError CreateTableBody
+readCreateTableBody input
+    = runParse parseCreateTableBody input
 
 
 readInsertHead :: String -> Either ParseError InsertHead

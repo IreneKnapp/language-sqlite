@@ -1,6 +1,7 @@
 {-# LANGUAGE GADTs, EmptyDataDecls, FlexibleInstances, ExistentialQuantification,
              StandaloneDeriving, TypeSynonymInstances #-}
 module Language.SQL.SQLite.Types (
+                                  -- * Building blocks
                                   ShowTokens(..),
                                   OneOrMore,
                                   mkOneOrMore,
@@ -8,74 +9,139 @@ module Language.SQL.SQLite.Types (
                                   NonnegativeDouble,
                                   mkNonnegativeDouble,
                                   fromNonnegativeDouble,
-                                  Type(..),
-                                  MaybeType(..),
-                                  MaybeTypeSize(..),
-                                  TypeSizeField(..),
-                                  LikeType(..),
-                                  Escape(..),
-                                  MaybeSwitchExpression(..),
-                                  CasePair(..),
-                                  Else(..),
-                                  Expression(..),
-                                  MaybeUnique(..),
-                                  MaybeIfNotExists(..),
-                                  MaybeIfExists(..),
-                                  MaybeForEachRow(..),
-                                  Permanence(..),
-                                  MaybeCollation(..),
-                                  MaybeAscDesc(..),
-                                  MaybeAutoincrement(..),
-                                  MaybeSign(..),
-                                  MaybeColumn(..),
+                                  Identifier(..),
+                                  toDoublyQualifiedIdentifier,
+                                  UnqualifiedIdentifier(..),
+                                  SinglyQualifiedIdentifier(..),
+                                  DoublyQualifiedIdentifier(..),
+                                  Token(..),
+                                  -- * Abstract syntax tree nodes
+                                  -- | There are a great many types of nodes in the
+                                  --   abstract syntax tree.  They are loosely divided
+                                  --   into
+                                  --   statements (commands to possibly be executed),
+                                  --   expressions (algebraic expressions to possibly
+                                  --   be evaluated),
+                                  --   clauses (major portions of a statement or
+                                  --   expression which have very complicated
+                                  --   grammatical structure),
+                                  --   subclauses (portions of clauses which still have
+                                  --   some grammatical structure),
+                                  --   qualifiers (things which have minimal grammatical
+                                  --   structure of their own, but can be present and
+                                  --   cause some change in semantics if they are),
+                                  --   keywords (things which have minimal grammatical
+                                  --   structure of their own, and no semantic meaning
+                                  --   either, but can be present),
+                                  --   heads (within a statement, groups of multiple
+                                  --   clauses which include the verb of the
+                                  --   statement),
+                                  --   and
+                                  --   bodies (within a statement, groups of multiple
+                                  --   clauses which do not include the verb of the
+                                  --   statement).
+                                  --   
+                                  --   The guiding principle behind the selection of
+                                  --   which things to give their own node-types to is
+                                  --   that it should be possible to parse SQL and
+                                  --   print it back out identically except for
+                                  --   whitespace.  This means for example that @!=@
+                                  --   and @<>@ are distinct in the AST, as are
+                                  --   @NOT NULL@ and @NOTNULL@, and is the rationale
+                                  --   behind the inclusion of the "keywords" category
+                                  --   which has no semantic meaning.  A likely use of
+                                  --   this library is to implement a system which allows
+                                  --   the same queries to be edited both as plaintext
+                                  --   SQL and as some graphical form, and if a user
+                                  --   edits as SQL, he expects these things to be
+                                  --   preserved, as they can be important to
+                                  --   readability.
+                                  --   
+                                  --   When a qualifier is omitted, it's prefixed with
+                                  --   @No@ as in 'NoIfNotExists'.  When a keyword is
+                                  --   omitted, it's prefixed with @Elided@ as in
+                                  --   'ElidedTransaction'.  This is to remind you that
+                                  --   an omitted qualifier has some sensible default
+                                  --   semantic, whereas an omitted keyword has the
+                                  --   same semantics as if it were present.
+                                  --   
+                                  --   There is a great deal of sharing of structure,
+                                  --   so I have made no attempt in this documentation to
+                                  --   organize the exports by category, except to give
+                                  --   expressions and statements their own sections;
+                                  --   instead, please enjoy this alphabetical index!
                                   AlterTableBody(..),
-                                  ColumnDefinition(..),
-                                  DefaultValue(..),
-                                  IndexedColumn(..),
+                                  CasePair(..),
                                   ColumnConstraint(..),
-                                  TableConstraint(..),
-                                  MaybeConstraintName(..),
-                                  TriggerTime(..),
-                                  TriggerCondition(..),
-                                  ModuleArgument(..),
-                                  QualifiedTableName(..),
-                                  OrderingTerm(..),
-                                  PragmaBody(..),
-                                  PragmaValue(..),
-                                  EitherColumnsAndConstraintsSelect(..),
-                                  InsertHead(..),
-                                  InsertBody(..),
-                                  UpdateHead(..),
-                                  Distinctness(..),
-                                  MaybeHaving(..),
-                                  MaybeAs(..),
+                                  ColumnDefinition(..),
+                                  CommitHead(..),
                                   CompoundOperator(..),
-                                  SelectCore(..),
-                                  ResultColumn(..),
-                                  JoinSource(..),
-                                  SingleSource(..),
-                                  JoinOperation(..),
-                                  JoinConstraint(..),
-                                  MaybeIndexedBy(..),
-                                  FromClause(..),
-                                  WhereClause(..),
-                                  GroupClause(..),
-                                  OrderClause(..),
-                                  LimitClause(..),
-                                  WhenClause(..),
                                   ConflictClause(..),
+                                  DefaultValue(..),
+                                  Distinctness(..),
+                                  CreateTableBody(..),
+                                  Else(..),
+                                  Escape(..),
                                   ForeignKeyClause(..),
                                   ForeignKeyClauseActionOrMatchPart(..),
                                   ForeignKeyClauseActionPart(..),
+                                  FromClause(..),
+                                  GroupClause(..),
+                                  IndexedColumn(..),
+                                  InsertBody(..),
+                                  InsertHead(..),
+                                  JoinConstraint(..),
+                                  JoinOperation(..),
+                                  JoinSource(..),
+                                  LikeType(..),
+                                  LimitClause(..),
+                                  MaybeAs(..),
+                                  MaybeAscDesc(..),
+                                  MaybeAutoincrement(..),
+                                  MaybeCollation(..),
+                                  MaybeColumn(..),
+                                  MaybeConstraintName(..),
+                                  MaybeDatabase(..),
+                                  MaybeForEachRow(..),
                                   MaybeForeignKeyClauseDeferrablePart(..),
+                                  MaybeHaving(..),
+                                  MaybeIfExists(..),
+                                  MaybeIfNotExists(..),
+                                  MaybeIndexedBy(..),
                                   MaybeInitialDeferralStatus(..),
-                                  CommitHead(..),
+                                  MaybeReleaseSavepoint(..),
+                                  MaybeSavepoint(..),
+                                  MaybeSign(..),
+                                  MaybeSwitchExpression(..),
+                                  MaybeTemporary(..),
                                   MaybeTransaction(..),
                                   MaybeTransactionType(..),
-                                  MaybeDatabase(..),
-                                  MaybeSavepoint(..),
-                                  MaybeReleaseSavepoint(..),
+                                  MaybeType(..),
+                                  MaybeTypeSize(..),
+                                  MaybeUnique(..),
+                                  ModuleArgument(..),
+                                  OrderClause(..),
+                                  OrderingTerm(..),
+                                  PragmaBody(..),
+                                  PragmaValue(..),
+                                  QualifiedTableName(..),
+                                  ResultColumn(..),
+                                  SelectCore(..),
+                                  SingleSource(..),
                                   StatementList(..),
+                                  TableConstraint(..),
+                                  TriggerCondition(..),
+                                  TriggerTime(..),
+                                  Type(..),
+                                  TypeSizeField(..),
+                                  UpdateHead(..),
+                                  WhenClause(..),
+                                  WhereClause(..),
+                                  
+                                  -- * Abstract syntax tree nodes - Expressions
+                                  Expression(..),
+                                  
+                                  -- * Abstract syntax tree nodes - Statements
                                   AnyStatement(..),
                                   fromAnyStatement,
                                   ExplainableStatement(..),
@@ -83,8 +149,6 @@ module Language.SQL.SQLite.Types (
                                   TriggerStatement(..),
                                   fromTriggerStatement,
                                   Statement(..),
-                                  Explain,
-                                  ExplainQueryPlan,
                                   AlterTable,
                                   Analyze,
                                   Attach,
@@ -102,6 +166,8 @@ module Language.SQL.SQLite.Types (
                                   DropTable,
                                   DropTrigger,
                                   DropView,
+                                  Explain,
+                                  ExplainQueryPlan,
                                   Insert,
                                   Pragma,
                                   Reindex,
@@ -111,13 +177,7 @@ module Language.SQL.SQLite.Types (
                                   Select,
                                   Update,
                                   UpdateLimited,
-                                  Vacuum,
-                                  Identifier(..),
-                                  toDoublyQualifiedIdentifier,
-                                  UnqualifiedIdentifier(..),
-                                  SinglyQualifiedIdentifier(..),
-                                  DoublyQualifiedIdentifier(..),
-                                  Token(..)
+                                  Vacuum
                                  )
     where
 
@@ -132,16 +192,22 @@ import qualified Data.Map as Map
 import Data.Typeable
 
 
+-- | A class implemented by every node of the AST; converts the node and its
+--   children into a list of tokens which correspond to the SQL representation
+--   of the node.
 class ShowTokens a where
     showTokens :: a -> [Token]
 
-
+-- | A class with hidden implementation so as to enforce the constraint that
+--   it is a nonempty homogeneous list of items.
 data OneOrMore a = MkOneOrMore [a]
                    deriving (Eq)
 
 instance (Show a) => Show (OneOrMore a) where
     show (MkOneOrMore list) = "1" ++ show list
 
+-- | The constructor for 'OneOrMore' @a@.  Returns 'Nothing' if the list it's given
+--   is empty, or 'Just' 'OneOrMore' @a@ if it is not.
 mkOneOrMore :: [a] -> Maybe (OneOrMore a)
 mkOneOrMore [] = Nothing
 mkOneOrMore list = Just $ MkOneOrMore list
@@ -149,24 +215,32 @@ mkOneOrMore list = Just $ MkOneOrMore list
 mapOneOrMore :: (a -> b) -> (OneOrMore a) -> [b]
 mapOneOrMore function (MkOneOrMore list) = map function list
 
+-- | The accessor for 'OneOrMore' @a@.  Returns @[a]@.
 fromOneOrMore :: (OneOrMore a) -> [a]
 fromOneOrMore (MkOneOrMore list) = list
 
+-- | A class with hidden implementation so as to enforce the constraint that
+--   it is a nonnegative double.
 data NonnegativeDouble = MkNonnegativeDouble Double
                          deriving (Eq)
 
 instance Show NonnegativeDouble where
     show (MkNonnegativeDouble double) = "+" ++ show double
 
+-- | The constructor for 'NonnegativeDouble'.  Returns 'Nothing' if the double it's
+--   given is negative, or 'Just' 'NonnegativeDouble' if it is not.
 mkNonnegativeDouble :: Double -> Maybe NonnegativeDouble
 mkNonnegativeDouble double =
     if double < 0.0
        then Nothing
        else Just $ MkNonnegativeDouble double
 
+-- | The accessor for 'NonnegativeDouble'.  Returns a double.
 fromNonnegativeDouble :: NonnegativeDouble -> Double
 fromNonnegativeDouble (MkNonnegativeDouble double) = double
 
+-- | The AST node corresponding to a column or value type.  Used by 'MaybeType' which
+--   is used by 'ColumnDefinition', and by 'ExpressionCast'.
 data Type = Type UnqualifiedIdentifier
                  MaybeTypeSize
             deriving (Eq, Show)
@@ -175,14 +249,16 @@ instance ShowTokens Type where
         = showTokens name
           ++ showTokens maybeTypeSize
 
-
-data MaybeType = NoType | JustType Type
+-- | The AST node corresponding to an optional column type.  Used by 'ColumnDefinition'.
+data MaybeType = NoType
+               | JustType Type
                  deriving (Eq, Show)
 instance ShowTokens MaybeType where
     showTokens NoType = []
     showTokens (JustType type') = showTokens type'
 
-
+-- | The AST node corresponding to an optional size annotation on a column or value
+--   type.  Used by 'Type'.
 data MaybeTypeSize = NoTypeSize
                    | TypeMaximumSize TypeSizeField
                    | TypeSize TypeSizeField TypeSizeField
@@ -200,7 +276,8 @@ instance ShowTokens MaybeTypeSize where
           ++ showTokens maximumSize
           ++ [PunctuationRightParenthesis]
 
-
+-- | The AST node corresponding to one of zero to two fields annotating a column or
+--   value type with size limits.  Used by 'MaybeTypeSize'.
 data TypeSizeField = DoubleSize MaybeSign NonnegativeDouble
                    | IntegerSize MaybeSign Word64
                      deriving (Eq, Show)
@@ -212,7 +289,8 @@ instance ShowTokens TypeSizeField where
         = showTokens maybeSign
           ++ [LiteralInteger word]
 
-
+-- | The AST node corresponding to a textual comparison operator in an expression.
+--   Used by 'ExpressionLike'.
 data LikeType = Like
               | NotLike
               | Glob
@@ -232,6 +310,8 @@ instance ShowTokens LikeType where
     showTokens Match = [KeywordMatch]
     showTokens NotMatch = [KeywordNot, KeywordMatch]
 
+-- | The AST node corresponding to the @ESCAPE@ subclause of a textual comparison
+--   expression.  Used by 'ExpressionLike'.
 data Escape = NoEscape | Escape Expression
               deriving (Eq, Show)
 instance ShowTokens Escape where
@@ -240,12 +320,16 @@ instance ShowTokens Escape where
         = [KeywordEscape]
           ++ showTokens expression
 
+-- | The AST node corresponding to the optional first subexpression in a @CASE@
+--   expression.  Used by 'ExpressionCase'.
 data MaybeSwitchExpression = NoSwitch | Switch Expression
                              deriving (Eq, Show)
 instance ShowTokens MaybeSwitchExpression where
     showTokens NoSwitch = []
     showTokens (Switch expression) = showTokens expression
 
+-- | The AST node corresponding to each @WHEN@-@THEN@ pair of subexpressions in a
+--   @CASE@ expression.  Used by 'ExpressionCase'.
 data CasePair = WhenThen Expression Expression
                 deriving (Eq, Show)
 instance ShowTokens CasePair where
@@ -255,6 +339,8 @@ instance ShowTokens CasePair where
           ++ [KeywordThen]
           ++ showTokens result
 
+-- | The AST node corresponding to the optional @ELSE@ subclause in a @CASE@ expression.
+--   Used by 'ExpressionCase'.
 data Else = NoElse
           | Else Expression
             deriving (Eq, Show)
@@ -262,73 +348,164 @@ instance ShowTokens Else where
     showTokens NoElse = []
     showTokens (Else expression) = [KeywordElse] ++ showTokens expression
 
+-- | The AST node corresponding to an expression.  Used by 'DefaultValue',
+--   'ColumnConstraint', 'TableConstraint', 'OrderingTerm', 'InsertBody',
+--   'MaybeHaving', 'ResultColumn', 'JoinConstraint', 'WhereClause', 'WhenClause',
+--   'Update', and 'UpdateLimited'.  Also useful at top level.
 data Expression = ExpressionLiteralInteger Word64
+                -- ^ Represents a literal integer expression.
                 | ExpressionLiteralFloat NonnegativeDouble
+                -- ^ Represents a literal floating-point expression.
                 | ExpressionLiteralString String
+                -- ^ Represents a literal string expression.
                 | ExpressionLiteralBlob BS.ByteString
+                -- ^ Represents a literal blob (binary large object) expression.
                 | ExpressionLiteralNull
+                -- ^ Represents a literal @NULL@ expression.
                 | ExpressionLiteralCurrentTime
+                -- ^ Represents a literal @current_time@ expression.
                 | ExpressionLiteralCurrentDate
+                -- ^ Represents a literal @current_date@ expression.
                 | ExpressionLiteralCurrentTimestamp
+                -- ^ Represents a literal @current_timestamp@ expression.
                 | ExpressionVariable
+                -- ^ Represents a positional-variable expression, written in SQL as @?@.
                 | ExpressionVariableN Word64
+                -- ^ Represents a numbered positional variable expression, written in
+                --   SQL as @?nnn@.
                 | ExpressionVariableNamed String
+                -- ^ Represents a named positional variable expression, written in
+                --   SQL as @:aaaa@.
                 | ExpressionIdentifier DoublyQualifiedIdentifier
+                -- ^ Represents a column-name expression, optionally qualified by a
+                --   table name and further by a database name.
                 | ExpressionUnaryNegative Expression
+                -- ^ Represents a unary negation expression.
                 | ExpressionUnaryPositive Expression
+                -- ^ Represents a unary positive-sign expression.  Yes, this is an nop.
                 | ExpressionUnaryBitwiseNot Expression
+                -- ^ Represents a unary bitwise negation expression.
                 | ExpressionUnaryLogicalNot Expression
+                -- ^ Represents a unary logical negation expression.
                 | ExpressionBinaryConcatenate Expression Expression
+                -- ^ Represents a binary string-concatenation expression.
                 | ExpressionBinaryMultiply Expression Expression
+                -- ^ Represents a binary multiplication expression.
                 | ExpressionBinaryDivide Expression Expression
+                -- ^ Represents a binary division expression.
                 | ExpressionBinaryModulus Expression Expression
+                -- ^ Represents a binary modulus expression.
                 | ExpressionBinaryAdd Expression Expression
+                -- ^ Represents a binary addition expression.
                 | ExpressionBinarySubtract Expression Expression
+                -- ^ Represents a binary subtraction expression.
                 | ExpressionBinaryLeftShift Expression Expression
+                -- ^ Represents a binary left-shift expression.
                 | ExpressionBinaryRightShift Expression Expression
+                -- ^ Represents a binary right-shift expression.
                 | ExpressionBinaryBitwiseAnd Expression Expression
+                -- ^ Represents a binary bitwise-and expression.
                 | ExpressionBinaryBitwiseOr Expression Expression
+                -- ^ Represents a binary bitwise-or expression.
                 | ExpressionBinaryLess Expression Expression
+                -- ^ Represents a binary less-than comparison expression.
                 | ExpressionBinaryLessEquals Expression Expression
+                -- ^ Represents a binary less-than-or-equal-to comparison expression.
                 | ExpressionBinaryGreater Expression Expression
+                -- ^ Represents a binary greater-than comparison expression.
                 | ExpressionBinaryGreaterEquals Expression Expression
+                -- ^ Represents a binary greater-than-or-equal-to comparison expression.
                 | ExpressionBinaryEquals Expression Expression
+                -- ^ Represents a binary equal-to comparison expression, written in SQL
+                --   as @=@.
                 | ExpressionBinaryEqualsEquals Expression Expression
+                -- ^ Represents a binary equal-to comparison expression, written in SQL
+                --   as @==@.
                 | ExpressionBinaryNotEquals Expression Expression
+                -- ^ Represents a binary not-equal-to comparison expression, written in
+                --   SQL as @!=@.
                 | ExpressionBinaryLessGreater Expression Expression
+                -- ^ Represents a binary not-equal-to comparison expression, written in
+                --   SQL as @<>@.
                 | ExpressionBinaryLogicalAnd Expression Expression
+                -- ^ Represents a binary logical-and expression.
                 | ExpressionBinaryLogicalOr Expression Expression
+                -- ^ Represents a binary logical-or expression.
                 | ExpressionFunctionCall UnqualifiedIdentifier [Expression]
+                -- ^ Represents a call to a built-in function.
                 | ExpressionFunctionCallDistinct UnqualifiedIdentifier
                                                  (OneOrMore Expression)
+                -- ^ Represents a call to a built-in function, with the @DISTINCT@
+                --   qualifier.
                 | ExpressionFunctionCallStar UnqualifiedIdentifier
+                -- ^ Represents a call to a built-in function, with @*@ as 
+                --   parameter.
                 | ExpressionCast Expression Type
+                -- ^ Represents a type-cast expression.
                 | ExpressionCollate Expression UnqualifiedIdentifier
+                -- ^ Represents a @COLLATE@ expression.
                 | ExpressionLike Expression LikeType Expression Escape
+                -- ^ Represents a textual comparison expression.
                 | ExpressionIsnull Expression
+                -- ^ Represents an @ISNULL@ expression.  Not to be confused with an
+                --   @IS@ expression with a literal @NULL@ as its right side; the
+                --   meaning is the same but the parsing is different.
                 | ExpressionNotnull Expression
+                -- ^ Represents a @NOTNULL@ expression.  Not to be confused with a
+                --   @NOT NULL@ expression; the meaning is the same but the parsing is
+                --   different.
                 | ExpressionNotNull Expression
+                -- ^ Represents a @NOT NULL@ expression.  Not to be confused with a
+                --   @NOTNULL@ expression; the meaning is the same but the parsing is
+                --   different.
                 | ExpressionIs Expression Expression
+                -- ^ Represents an @IS@ expression.
                 | ExpressionIsNot Expression Expression
+                -- ^ Represents an @IS NOT@ expression.
                 | ExpressionBetween Expression Expression Expression
+                -- ^ Represents a @BETWEEN@ expression.
                 | ExpressionNotBetween Expression Expression Expression
+                -- ^ Represents a @NOT BETWEEN@ expression.
                 | ExpressionInSelect Expression (Select)
+                -- ^ Represents an @IN@ expression with the right-hand side being a
+                --   @SELECT@ statement.
                 | ExpressionNotInSelect Expression (Select)
+                -- ^ Represents a @NOT IN@ expression with the right-hand side being a
+                --   @SELECT@ statement.
                 | ExpressionInList Expression [Expression]
+                -- ^ Represents an @IN@ expression with the right-hand side being a
+                --   list of subexpressions.
                 | ExpressionNotInList Expression [Expression]
+                -- ^ Represents a @NOT IN@ expression with the right-hand side being a
+                --   list of subexpressions.
                 | ExpressionInTable Expression SinglyQualifiedIdentifier
+                -- ^ Represents an @IN@ expression with the right-hand side being a
+                --   table name, optionally qualified by a database name.
                 | ExpressionNotInTable Expression SinglyQualifiedIdentifier
+                -- ^ Represents a @NOT IN@ expression with the right-hand side being a
+                --   table name, optionally qualified by a database name.
                 | ExpressionSubquery (Select)
+                -- ^ Represents a subquery @SELECT@ expression.
                 | ExpressionExistsSubquery (Select)
+                -- ^ Represents a subquery @SELECT@ expression with the @EXISTS@
+                --   qualifier.
                 | ExpressionNotExistsSubquery (Select)
+                -- ^ Represents a subquery @SELECT@ expression with the @NOT EXISTS@
+                --   qualifier.
                 | ExpressionCase MaybeSwitchExpression
                                  (OneOrMore CasePair)
                                  Else
+                -- ^ Represents a @CASE@ expression.
                 | ExpressionRaiseIgnore
+                -- ^ Represents a @RAISE(IGNORE)@ expression.
                 | ExpressionRaiseRollback String
+                -- ^ Represents a @RAISE(ROLLBACK, string)@ expression.
                 | ExpressionRaiseAbort String
+                -- ^ Represents a @RAISE(ABORT, string)@ expression.
                 | ExpressionRaiseFail String
+                -- ^ Represents a @RAISE(FAIL, string)@ expression.
                 | ExpressionParenthesized Expression
+                -- ^ Represents a parenthesized subexpression.
                   deriving (Eq, Show)
 
 instance ShowTokens Expression where
@@ -542,44 +719,57 @@ instance ShowTokens Expression where
           ++ showTokens subexpression
           ++ [PunctuationRightParenthesis]
 
-
+-- | The AST node corresponding to an optional @UNIQUE@ qualifier.  Used by
+--   'CreateIndex'.
 data MaybeUnique = NoUnique | Unique
                    deriving (Eq, Show)
 instance ShowTokens MaybeUnique where
     showTokens NoUnique = []
     showTokens Unique = [KeywordUnique]
 
+-- | The AST node corresponding to an optional @IF NOT EXISTS@ qualifier.  Used by
+--   'CreateIndex', 'CreateTable', 'CreateTrigger', and 'CreateView'.
 data MaybeIfNotExists = NoIfNotExists | IfNotExists
                         deriving (Eq, Show)
 instance ShowTokens MaybeIfNotExists where
     showTokens NoIfNotExists = []
     showTokens IfNotExists = [KeywordIf, KeywordNot, KeywordExists]
 
+-- | The AST node corresponding to an optional @IF EXISTS@ qualifier.  Used by
+--   'DropIndex', 'DropTable', 'DropTrigger', and 'DropView'.
 data MaybeIfExists = NoIfExists | IfExists
                      deriving (Eq, Show)
 instance ShowTokens MaybeIfExists where
     showTokens NoIfExists = []
     showTokens IfExists = [KeywordIf, KeywordExists]
 
+-- | The AST node corresponding to an optional @FOR EACH ROW@ qualifier.  Used by
+--   'CreateTrigger'.
 data MaybeForEachRow = NoForEachRow | ForEachRow
                        deriving (Eq, Show)
 instance ShowTokens MaybeForEachRow where
     showTokens NoForEachRow = []
     showTokens ForEachRow = [KeywordFor, KeywordEach, KeywordRow]
 
-data Permanence = Permanent | Temp | Temporary
+-- | The AST node corresponding to an optional @TEMP@ or @TEMPORARY@ qualifier.  Used
+--   by 'CreateTable', 'CreateTrigger', and 'CreateView'.
+data MaybeTemporary = NoTemporary | Temp | Temporary
                   deriving (Eq, Show)
-instance ShowTokens Permanence where
-    showTokens Permanent = []
+instance ShowTokens MaybeTemporary where
+    showTokens NoTemporary = []
     showTokens Temp = [KeywordTemp]
     showTokens Temporary = [KeywordTemporary]
 
+-- | The AST node corresponding to an optional @COLLATE@ subclause.  Used by
+--   'IndexedColumn' and 'OrderingTerm'.
 data MaybeCollation = NoCollation | Collation UnqualifiedIdentifier
                       deriving (Eq, Show)
 instance ShowTokens MaybeCollation where
     showTokens NoCollation = []
     showTokens (Collation name) = [KeywordCollate] ++ showTokens name
 
+-- | The AST node corresponding to an optional @ASC@ or @DESC@ qualifier.  Used by
+--   'IndexedColumn', 'ColumnConstraint', and 'OrderingTerm'.
 data MaybeAscDesc = NoAscDesc | Asc | Desc
                     deriving (Eq, Show)
 instance ShowTokens MaybeAscDesc where
@@ -587,12 +777,16 @@ instance ShowTokens MaybeAscDesc where
     showTokens Asc = [KeywordAsc]
     showTokens Desc = [KeywordDesc]
 
+-- | The AST node corresponding to an optional @AUTOINCREMENT@ qualifier.  Used by
+--   'ColumnConstraint'.
 data MaybeAutoincrement = NoAutoincrement | Autoincrement
                           deriving (Eq, Show)
 instance ShowTokens MaybeAutoincrement where
     showTokens NoAutoincrement = []
     showTokens Autoincrement = [KeywordAutoincrement]
 
+-- | The AST node corresponding to an optional @+@ or @-@ sign.  Used by
+--   'TypeSizeField', 'DefaultValue', and 'PragmaValue'.
 data MaybeSign = NoSign | PositiveSign | NegativeSign
                  deriving (Eq, Show)
 instance ShowTokens MaybeSign where
@@ -600,12 +794,16 @@ instance ShowTokens MaybeSign where
     showTokens PositiveSign = [PunctuationPlus]
     showTokens NegativeSign = [PunctuationMinus]
 
+-- | The AST node corresponding to an optional @COLUMN@ keyword.
+--   Used by 'AlterTableBody'.
 data MaybeColumn = ElidedColumn | Column
                    deriving (Eq, Show)
 instance ShowTokens MaybeColumn where
     showTokens ElidedColumn = []
     showTokens Column = [KeywordColumn]
 
+-- | The AST node corresponding to the body of an 'AlterTable' statement.
+--   Used by 'AlterTable'.
 data AlterTableBody
     = RenameTo UnqualifiedIdentifier
     | AddColumn MaybeColumn ColumnDefinition
@@ -619,6 +817,8 @@ instance ShowTokens AlterTableBody where
           ++ showTokens maybeColumn
           ++ showTokens columnDefinition
 
+-- | The AST node corresponding to a column-definition subclause.  Used by
+--   'AlterTableBody' and 'CreateTableBody'.
 data ColumnDefinition
     = ColumnDefinition UnqualifiedIdentifier MaybeType [ColumnConstraint]
       deriving (Eq, Show)
@@ -628,6 +828,8 @@ instance ShowTokens ColumnDefinition where
           ++ showTokens maybeType
           ++ (concat $ map showTokens constraints)
 
+-- | The AST node corresponding to a default-value subclause.  Used by
+--   'ColumnConstraint'.
 data DefaultValue
     = DefaultValueSignedInteger MaybeSign Word64
     | DefaultValueSignedFloat MaybeSign NonnegativeDouble
@@ -663,6 +865,8 @@ instance ShowTokens DefaultValue where
           ++ showTokens expression
           ++ [PunctuationRightParenthesis]
 
+-- | The AST node corresponding to an indexed-column subclause.  Used by
+--   'TableConstraint' and 'CreateIndex'.
 data IndexedColumn
     = IndexedColumn UnqualifiedIdentifier MaybeCollation MaybeAscDesc
       deriving (Eq, Show)
@@ -672,6 +876,8 @@ instance ShowTokens IndexedColumn where
           ++ showTokens maybeCollation
           ++ showTokens maybeAscDesc
 
+-- | The AST node corresponding to a column constraint subclause.  Used by
+--   'ColumnDefinition'.
 data ColumnConstraint
     = ColumnPrimaryKey MaybeConstraintName
                        MaybeAscDesc
@@ -725,6 +931,8 @@ instance ShowTokens ColumnConstraint where
         = showTokens maybeConstraintName
           ++ showTokens foreignKeyClause
 
+-- | The AST node corresponding to a table-constraint subclause.  Used by
+--   'CreateTableBody'.
 data TableConstraint
     = TablePrimaryKey MaybeConstraintName
                       (OneOrMore IndexedColumn)
@@ -767,6 +975,8 @@ instance ShowTokens TableConstraint where
           ++ [PunctuationRightParenthesis]
           ++ showTokens foreignKeyClause
 
+-- | The AST node corresponding to an optional constraint name subclause.  Used by
+--   'ColumnConstraint' and 'Table Constraint'.
 data MaybeConstraintName = NoConstraintName
                          | ConstraintName UnqualifiedIdentifier
                            deriving (Eq, Show)
@@ -776,13 +986,16 @@ instance ShowTokens MaybeConstraintName where
         = [KeywordConstraint]
           ++ showTokens constraintName
 
+-- | The AST node corresponding to a trigger-time qualifier.  Used by 'CreateTrigger'.
 data TriggerTime = Before | After | InsteadOf
                    deriving (Eq, Show)
 instance ShowTokens TriggerTime where
     showTokens Before = [KeywordBefore]
     showTokens After = [KeywordAfter]
     showTokens InsteadOf = [KeywordInstead, KeywordOf]
-    
+
+-- | The AST node corresponding to a trigger-condition subclause.  Used by
+--   'CreateTrigger'.
 data TriggerCondition = DeleteOn | InsertOn | UpdateOn [UnqualifiedIdentifier]
                         deriving (Eq, Show)
 instance ShowTokens TriggerCondition where
@@ -794,11 +1007,14 @@ instance ShowTokens TriggerCondition where
                                                        (map showTokens columnNames)
                                         ++ [KeywordOn]
 
+-- | The AST node corresponding to a module argument.  Used by 'CreateVirtualTable'.
 data ModuleArgument = ModuleArgument String
                       deriving (Eq, Show)
 instance ShowTokens ModuleArgument where
     showTokens (ModuleArgument string) = [ModuleArgumentToken string]
 
+-- | The AST node corresponding to a qualified table name subclause.  Used by
+--   'Delete', 'DeleteLimited', 'Update', and 'UpdateLimited'.
 data QualifiedTableName
     = TableNoIndexedBy SinglyQualifiedIdentifier
     | TableIndexedBy SinglyQualifiedIdentifier UnqualifiedIdentifier
@@ -815,6 +1031,8 @@ instance ShowTokens QualifiedTableName where
         showTokens tableName
         ++ [KeywordNot, KeywordIndexed]
 
+-- | The AST node corresponding to an ordering term subclause.  Used by
+--   'GroupClause' and 'OrderClause'.
 data OrderingTerm = OrderingTerm Expression MaybeCollation MaybeAscDesc
                     deriving (Eq, Show)
 instance ShowTokens OrderingTerm where
@@ -823,6 +1041,7 @@ instance ShowTokens OrderingTerm where
         ++ showTokens maybeCollation
         ++ showTokens maybeAscDesc
 
+-- | The AST node corresponding to a pragma body.  Used by 'Pragma'.
 data PragmaBody = EmptyPragmaBody
                 | EqualsPragmaBody PragmaValue
                 | CallPragmaBody PragmaValue
@@ -837,6 +1056,7 @@ instance ShowTokens PragmaBody where
           ++ showTokens pragmaValue
           ++ [PunctuationRightParenthesis]
 
+-- | The AST node corresponding to a pragma value subclause.  Used by 'PragmaBody'.
 data PragmaValue = SignedIntegerPragmaValue MaybeSign Word64
                  | SignedFloatPragmaValue MaybeSign NonnegativeDouble
                  | NamePragmaValue UnqualifiedIdentifier
@@ -854,11 +1074,12 @@ instance ShowTokens PragmaValue where
     showTokens (StringPragmaValue string)
         = [LiteralString string]
 
-data EitherColumnsAndConstraintsSelect
+-- | The AST node corresponding to a create-table body.  Used by 'CreateTable'.
+data CreateTableBody
     = ColumnsAndConstraints (OneOrMore ColumnDefinition) [TableConstraint]
     | AsSelect (Select)
       deriving (Eq, Show)
-instance ShowTokens EitherColumnsAndConstraintsSelect where
+instance ShowTokens CreateTableBody where
     showTokens (ColumnsAndConstraints columns constraints)
         = [PunctuationLeftParenthesis]
           ++ (intercalate [PunctuationComma]
@@ -869,6 +1090,7 @@ instance ShowTokens EitherColumnsAndConstraintsSelect where
         = [KeywordAs]
           ++ showTokens select
 
+-- | The AST node corresponding to an insert head.  Used by 'Insert'.
 data InsertHead = InsertNoAlternative
                 | InsertOrRollback
                 | InsertOrAbort
@@ -886,6 +1108,7 @@ instance ShowTokens InsertHead where
     showTokens InsertOrIgnore = [KeywordInsert, KeywordOr, KeywordIgnore]
     showTokens Replace = [KeywordReplace]
 
+-- | The AST node corresponding to an insert body.  Used by 'Insert'.
 data InsertBody = InsertValues [UnqualifiedIdentifier] (OneOrMore Expression)
                 | InsertSelect [UnqualifiedIdentifier] (Select)
                 | InsertDefaultValues
@@ -910,6 +1133,8 @@ instance ShowTokens InsertBody where
     showTokens InsertDefaultValues
         = [KeywordDefault, KeywordValues]
 
+-- | The AST node corresponding to an update head.  Used by 'Update' and
+--   'UpdateLimited'.
 data UpdateHead = UpdateNoAlternative
                 | UpdateOrRollback
                 | UpdateOrAbort
@@ -925,6 +1150,8 @@ instance ShowTokens UpdateHead where
     showTokens UpdateOrFail = [KeywordUpdate, KeywordOr, KeywordFail]
     showTokens UpdateOrIgnore = [KeywordUpdate, KeywordOr, KeywordIgnore]
 
+-- | The AST node corresponding to an optional @DISTINCT@ or @ALL@ qualifier.
+--   Used by 'SelectCore'.
 data Distinctness = NoDistinctness | Distinct | All
                     deriving (Eq, Show)
 instance ShowTokens Distinctness where
@@ -932,12 +1159,16 @@ instance ShowTokens Distinctness where
     showTokens Distinct = [KeywordDistinct]
     showTokens All = [KeywordAll]
 
+-- | The AST node corresponding to an optional @HAVING@ subclause.  Used by
+--   'GroupClause'.
 data MaybeHaving = NoHaving | Having Expression
                    deriving (Eq, Show)
 instance ShowTokens MaybeHaving where
     showTokens NoHaving = []
     showTokens (Having expression) = [KeywordHaving] ++ showTokens expression
 
+-- | The AST node corresponding to an optional @AS@ subclause, possibly with the
+--   actual keyword elided.  Used by 'ResultColumn' and 'SingleSource'.
 data MaybeAs = NoAs | As UnqualifiedIdentifier | ElidedAs UnqualifiedIdentifier
                deriving (Eq, Show)
 instance ShowTokens MaybeAs where
@@ -945,6 +1176,8 @@ instance ShowTokens MaybeAs where
     showTokens (As thingAlias) = [KeywordAs] ++ showTokens thingAlias
     showTokens (ElidedAs thingAlias) = showTokens thingAlias
 
+-- | The AST node corresponding to a compound operator in a @SELECT@ statement.
+--   Used by 'Select'.
 data CompoundOperator = Union | UnionAll | Intersect | Except
                         deriving (Eq, Show)
 instance ShowTokens CompoundOperator where
@@ -953,6 +1186,9 @@ instance ShowTokens CompoundOperator where
     showTokens Intersect = [KeywordIntersect]
     showTokens Except = [KeywordExcept]
 
+-- | The AST node corresponding to the core part of a @SELECT@ statement, which may
+--   be the head of the overall statement, or, in the case of a compound @SELECT@,
+--   only part of it.  Used by 'Select'.
 data SelectCore = SelectCore Distinctness
                              (OneOrMore ResultColumn)
                              (Maybe FromClause)
@@ -978,6 +1214,8 @@ instance ShowTokens SelectCore where
                 Nothing -> []
                 Just groupClause -> showTokens groupClause)
 
+-- | The AST node corresponding to a result column in a @SELECT@ statement.  Used by
+--   'SelectCore'.
 data ResultColumn = Star
                   | TableStar UnqualifiedIdentifier
                   | Result Expression MaybeAs
@@ -992,6 +1230,9 @@ instance ShowTokens ResultColumn where
         = showTokens expression
           ++ showTokens maybeAs
 
+-- | The AST node corresponding to a source from which to join columns in a @SELECT@
+--   statement, which may be the head of the statement's @FROM@ clause, or, in the
+--   case of a subjoin, only part of it.  Used by 'FromClause' and 'SingleSource'.
 data JoinSource = JoinSource SingleSource
                              [(JoinOperation, SingleSource, JoinConstraint)]
                   deriving (Eq, Show)
@@ -1004,6 +1245,9 @@ instance ShowTokens JoinSource where
                              ++ showTokens joinConstraint)
                            additionalSources)
 
+-- | The AST node corresponding to a primitive source from which to join columns in
+--   a @SELECT@ statement, which is a body of the statement's @FROM@ clause.  Used by
+--   'JoinSource'.
 data SingleSource = TableSource SinglyQualifiedIdentifier
                                 MaybeAs
                                 MaybeIndexedBy
@@ -1026,6 +1270,8 @@ instance ShowTokens SingleSource where
           ++ showTokens joinSource
           ++ [PunctuationRightParenthesis]
 
+-- | The AST node corresponding to a join operation, a conjunction in the @FROM@
+--   clause of a @SELECT@ statement.  Used by 'JoinSource'.
 data JoinOperation = Comma
                    | Join
                    | OuterJoin
@@ -1056,6 +1302,8 @@ instance ShowTokens JoinOperation where
     showTokens NaturalInnerJoin = [KeywordNatural, KeywordInner, KeywordJoin]
     showTokens NaturalCrossJoin = [KeywordNatural, KeywordCross, KeywordJoin]
 
+-- | The AST node corresponding to a join constraint, a qualifier in the @FROM@
+--   clause of a @SELECT@ statement.  Used by 'JoinSource'.
 data JoinConstraint = NoConstraint
                     | On Expression
                     | Using (OneOrMore UnqualifiedIdentifier)
@@ -1067,6 +1315,8 @@ instance ShowTokens JoinConstraint where
         = [KeywordUsing, PunctuationLeftParenthesis]
           ++ (intercalate [PunctuationComma] $ mapOneOrMore showTokens columns)
 
+-- | The AST node corresponding to an optional @INDEXED BY@ or @NOT INDEXED@ qualifier.
+--   Used by 'SingleSource'.
 data MaybeIndexedBy = NoIndexedBy
                     | IndexedBy UnqualifiedIdentifier
                     | NotIndexed
@@ -1077,16 +1327,20 @@ instance ShowTokens MaybeIndexedBy where
         = [KeywordIndexed, KeywordBy] ++ showTokens indexName
     showTokens NotIndexed = [KeywordNot, KeywordIndexed]
 
+-- | The AST node corresponding to a @FROM@ clause.  Used by 'SelectCore'.
 data FromClause = From JoinSource
                   deriving (Eq, Show)
 instance ShowTokens FromClause where
     showTokens (From joinSource) = [KeywordFrom] ++ showTokens joinSource
 
+-- | The AST node corresponding to a @WHERE@ clause.  Used by 'SelectCore',
+--   'Delete', 'DeleteLimited', 'Update', and 'UpdateLimited'.
 data WhereClause = Where Expression
                    deriving (Eq, Show)
 instance ShowTokens WhereClause where
     showTokens (Where expression) = [KeywordWhere] ++ showTokens expression
 
+-- | The AST node corresponding to a @GROUP BY@ clause.  Used by 'SelectCore'.
 data GroupClause = GroupBy (OneOrMore OrderingTerm) MaybeHaving
                    deriving (Eq, Show)
 instance ShowTokens GroupClause where
@@ -1095,6 +1349,8 @@ instance ShowTokens GroupClause where
           ++ (intercalate [PunctuationComma] $ mapOneOrMore showTokens orderingTerms)
           ++ showTokens maybeHaving
 
+-- | The AST node corresponding to an @ORDER BY@ clause.  Used by 'Select',
+--   'DeleteLimited', and 'UpdateLimited'.
 data OrderClause = OrderBy (OneOrMore OrderingTerm)
                    deriving (Eq, Show)
 instance ShowTokens OrderClause where
@@ -1102,6 +1358,8 @@ instance ShowTokens OrderClause where
         = [KeywordOrder, KeywordBy]
           ++ (intercalate [PunctuationComma] $ mapOneOrMore showTokens orderingTerms)
 
+-- | The AST node corresponding to a @LIMIT@ clause.  Used by 'Select',
+--   'DeleteLimited', and 'UpdateLimited'.
 data LimitClause = Limit Word64
                  | LimitOffset Word64 Word64
                  | LimitComma Word64 Word64
@@ -1114,11 +1372,14 @@ instance ShowTokens LimitClause where
     showTokens (LimitComma offset count)
         = [KeywordLimit, LiteralInteger offset, KeywordOffset, LiteralInteger count]
 
+-- | The AST node corresponding to a @WHEN@ clause.  Used by 'CreateTrigger'.
 data WhenClause = When Expression
                   deriving (Eq, Show)
 instance ShowTokens WhenClause where
     showTokens (When expression) = [KeywordWhen] ++ showTokens expression
 
+-- | The AST node corresponding to an @ON CONFLICT@ clause.  Used by
+--   'ColumnConstraint' and 'TableConstraint'.
 data ConflictClause
     = OnConflictRollback
     | OnConflictAbort
@@ -1133,6 +1394,8 @@ instance ShowTokens ConflictClause where
     showTokens OnConflictIgnore = [KeywordOn, KeywordConflict, KeywordIgnore]
     showTokens OnConflictReplace = [KeywordOn, KeywordConflict, KeywordReplace]
 
+-- | The AST node corresponding to a @FOREIGN KEY@ clause.  Used by
+--   'ColumnConstraint' and 'TableConstraint'.
 data ForeignKeyClause
     = References UnqualifiedIdentifier
                  [UnqualifiedIdentifier]
@@ -1153,6 +1416,8 @@ instance ShowTokens ForeignKeyClause where
           ++ (concat $ map showTokens actionOrMatchParts)
           ++ showTokens maybeDeferrablePart
 
+-- | The AST node corresponding to the first partial body of a @FOREIGN KEY@ clause.
+--   Used by 'ForeignKeyClause'.
 data ForeignKeyClauseActionOrMatchPart
     = OnDelete ForeignKeyClauseActionPart
     | OnUpdate ForeignKeyClauseActionPart
@@ -1169,6 +1434,8 @@ instance ShowTokens ForeignKeyClauseActionOrMatchPart where
         = [KeywordMatch]
           ++ showTokens name
 
+-- | The AST node corresponding to an action subclause in the first partial body of
+--   a @FOREIGN KEY@ clause.  Used by 'ForeignKeyClauseActionOrMatchPart'.
 data ForeignKeyClauseActionPart
     = SetNull
     | SetDefault
@@ -1183,6 +1450,8 @@ instance ShowTokens ForeignKeyClauseActionPart where
     showTokens Restrict = [KeywordRestrict]
     showTokens NoAction = [KeywordNo, KeywordAction]
 
+-- | The AST node corresponding to the second partial body of a @FOREIGN KEY@ clause.
+--   Used by 'ForeignKeyClause'.
 data MaybeForeignKeyClauseDeferrablePart
     = NoDeferrablePart
     | Deferrable MaybeInitialDeferralStatus
@@ -1197,6 +1466,9 @@ instance ShowTokens MaybeForeignKeyClauseDeferrablePart where
         = [KeywordNot, KeywordDeferrable]
           ++ showTokens maybeInitialDeferralStatus
 
+-- | The AST node corresponding to an optional @INITIALLY DEFERRED@ or
+--   @INITIALLY IMMEDIATE@ qualifier in a @FOREIGN KEY@ clause.  Used by
+--   'MaybeForeignKeyClauseDeferrablePart'.
 data MaybeInitialDeferralStatus
     = NoInitialDeferralStatus
     | InitiallyDeferred
@@ -1207,6 +1479,8 @@ instance ShowTokens MaybeInitialDeferralStatus where
     showTokens InitiallyDeferred = [KeywordInitially, KeywordDeferred]
     showTokens InitiallyImmediate = [KeywordInitially, KeywordImmediate]
 
+-- | The AST node corresponding to the head of a @COMMIT@ statement.  Used by
+--   'Commit'.
 data CommitHead
     = CommitCommit
     | CommitEnd
@@ -1215,12 +1489,16 @@ instance ShowTokens CommitHead where
     showTokens CommitCommit = [KeywordCommit]
     showTokens CommitEnd = [KeywordEnd]
 
+-- | The AST node corresponding to an optional @TRASACTION@ keyword.  Used by
+--   'Begin', 'Commit', and 'Rollback'.
 data MaybeTransaction = ElidedTransaction | Transaction
                         deriving (Eq, Show)
 instance ShowTokens MaybeTransaction where
     showTokens ElidedTransaction = []
     showTokens Transaction = [KeywordTransaction]
 
+-- | The AST node corresponding to an optional transaction-type qualifier.  Used
+--   by 'Begin'.
 data MaybeTransactionType
     = NoTransactionType
     | Deferred
@@ -1233,12 +1511,16 @@ instance ShowTokens MaybeTransactionType where
     showTokens Immediate = [KeywordImmediate]
     showTokens Exclusive = [KeywordExclusive]
 
+-- | The AST node corresponding to an optional @DATABASE@ keyword.  Used by
+--   'Attach' and 'Detach'.
 data MaybeDatabase = ElidedDatabase | Database
                      deriving (Eq, Show)
 instance ShowTokens MaybeDatabase where
     showTokens ElidedDatabase = []
     showTokens Database = [KeywordDatabase]
 
+-- | The AST node corresponding to an optional @TO SAVEPOINT@ qualifier.  Used by
+--   'Rollback'.
 data MaybeSavepoint = NoSavepoint
                     | To UnqualifiedIdentifier
                     | ToSavepoint UnqualifiedIdentifier
@@ -1252,6 +1534,8 @@ instance ShowTokens MaybeSavepoint where
         = [KeywordTo, KeywordSavepoint]
           ++ showTokens savepointName
 
+-- | The AST node corresponding to an optional @RELEASE SAVEPOINT@ qualifier.
+--   Used by 'Release'.
 data MaybeReleaseSavepoint = ElidedReleaseSavepoint UnqualifiedIdentifier
                            | ReleaseSavepoint UnqualifiedIdentifier
                              deriving (Eq, Show)
@@ -1262,12 +1546,16 @@ instance ShowTokens MaybeReleaseSavepoint where
                = [KeywordSavepoint]
                  ++ showTokens savepointName
 
+-- | The AST node corresponding to a semicolon-separated list of statements.
+--   Used at the top level of an SQL file.
 data StatementList = StatementList [AnyStatement]
                      deriving (Eq, Show)
 instance ShowTokens StatementList where
     showTokens (StatementList list) =
         intercalate [PunctuationSemicolon] $ map showTokens list
 
+-- | The AST node corresponding to any statement.  Used by 'StatementList'.
+--   Also useful at top level.
 data AnyStatement = forall l t v w . Statement (Statement l t v w)
 instance Eq AnyStatement where
     a@(Statement (Explain _))
@@ -1366,7 +1654,7 @@ class StatementClass a where
     fromAnyStatement :: AnyStatement -> a
     fromExplainableStatement :: ExplainableStatement -> a
     fromTriggerStatement :: TriggerStatement -> a
-    
+
 instance StatementClass Explain where
     fromAnyStatement (Statement result@(Explain _)) = result
     fromExplainableStatement _ = undefined
@@ -1546,64 +1834,166 @@ data NS
 data S
 
 data Explain'
+-- | A type synonym which matches only the AST node corresponding to
+--   an @EXPLAIN@ statement.
+--   Useful at top level.
 type Explain = Statement L1 NT NS Explain'
 data ExplainQueryPlan'
+-- | A type synonym which matches only the AST node corresponding to
+--   an @EXPLAIN QUERY PLAN@ statement.
+--   Useful at top level.
 type ExplainQueryPlan = Statement L1 NT NS ExplainQueryPlan'
 data AlterTable'
+-- | A type synonym which matches only the AST node corresponding to
+--   an @ALTER TABLE@ statement.
+--   Useful at top level.
 type AlterTable = Statement L0 NT NS AlterTable'
 data Analyze'
+-- | A type synonym which matches only the AST node corresponding to
+--   an @ANALYZE@ statement.
+--   Useful at top level.
 type Analyze = Statement L0 NT NS Analyze'
 data Attach'
+-- | A type synonym which matches only the AST node corresponding to
+--   an @ATTACH@ statement.
+--   Useful at top level.
 type Attach = Statement L0 NT NS Attach'
 data Begin'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @BEGIN@ statement.
+--   Useful at top level.
 type Begin = Statement L0 NT NS Begin'
 data Commit'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @COMMIT@ statement.
+--   Useful at top level.
 type Commit = Statement L0 NT NS Commit'
 data CreateIndex'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @CREATE INDEX@ statement.
+--   Useful at top level.
 type CreateIndex = Statement L0 NT NS CreateIndex'
 data CreateTable'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @CREATE TABLE@ statement.
+--   Useful at top level.
 type CreateTable = Statement L0 NT NS CreateTable'
 data CreateTrigger'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @CREATE TRIGGER@ statement.
+--   Useful at top level.
 type CreateTrigger = Statement L0 NT NS CreateTrigger'
 data CreateView'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @CREATE VIEW@ statement.
+--   Useful at top level.
 type CreateView = Statement L0 NT NS CreateView'
 data CreateVirtualTable'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @CREATE VIRTUAL TABLE@ statement.
+--   Useful at top level.
 type CreateVirtualTable = Statement L0 NT NS CreateVirtualTable'
 data Delete'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @DELETE@ statement without a @LIMIT@ clause.
+--   Useful at top level.
 type Delete = Statement L0 T NS Delete'
 data DeleteLimited'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @DELETE@ statement with a @LIMIT@ clause.
+--   Useful at top level.
 type DeleteLimited = Statement L0 NT NS DeleteLimited'
 data Detach'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @DETACH@ statement.
+--   Useful at top level.
 type Detach = Statement L0 NT NS Detach'
 data DropIndex'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @DROP INDEX@ statement.
+--   Useful at top level.
 type DropIndex = Statement L0 NT NS DropIndex'
 data DropTable'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @DROP TABLE@ statement.
+--   Useful at top level.
 type DropTable = Statement L0 NT NS DropTable'
 data DropTrigger'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @DROP TRIGGER@ statement.
+--   Useful at top level.
 type DropTrigger = Statement L0 NT NS DropTrigger'
 data DropView'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @DROP VIEW@ statement.
+--   Useful at top level.
 type DropView = Statement L0 NT NS DropView'
 data Insert'
+-- | A type synonym which matches only the AST node corresponding to
+--   an @INSERT@ statement.
+--   Useful at top level.
 type Insert = Statement L0 T NS Insert'
 data Pragma'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @PRAGMA@ statement.
+--   Useful at top level.
 type Pragma = Statement L0 NT NS Pragma'
 data Reindex'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @REINDEX@ statement.
+--   Useful at top level.
 type Reindex = Statement L0 NT NS Reindex'
 data Release'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @RELEASE@ statement.
+--   Useful at top level.
 type Release = Statement L0 NT NS Release'
 data Rollback'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @ROLLBACK@ statement.
+--   Useful at top level.
 type Rollback = Statement L0 NT NS Rollback'
 data Savepoint'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @SAVEPOINT@ statement.
+--   Useful at top level.
 type Savepoint = Statement L0 NT NS Savepoint'
 data Select'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @SELECT@ statement.
+--   Useful at top level.
 type Select = Statement L0 T S Select'
 data Update'
+-- | A type synonym which matches only the AST node corresponding to
+--   an @UPDATE@ statement without a @LIMIT@ clause.
+--   Useful at top level.
 type Update = Statement L0 T NS Update'
 data UpdateLimited'
+-- | A type synonym which matches only the AST node corresponding to
+--   an @UPDATE@ statement with a @LIMIT@ clause.
+--   Useful at top level.
 type UpdateLimited = Statement L0 NT NS UpdateLimited'
 data Vacuum'
+-- | A type synonym which matches only the AST node corresponding to
+--   a @VACUUM@ statement.
+--   Useful at top level.
 type Vacuum = Statement L0 NT NS Vacuum'
 
+-- | The AST node which corresponds to a statement.  Not directly useful at
+--   top level because it is a generalized algebraic datatype the type parameters
+--   to which are not exported; instead, see the existentially qualified
+--   types 'AnyStatement', 'ExplainableStatement', and 'TriggerStatement', and the
+--   type synonyms such as 'Select' which correspond to individual statement types.
+--   
+--   I apologize for the lack of documentation on these individual entries, but
+--   Haddock won't let me do it!  At any rate, each of them is an AST node corresponding
+--   to an individual statement type.
+--   
+--   Note the distinctions between
+--   'Delete' and 'DeleteLimited' and 'Update' and 'UpdateLimited':  The @Limited@ ones
+--   have @LIMIT@ clauses and the others do not.  Because SQL imposes stricter
+--   restrictions on where the ones with @LIMIT@ clauses can occur, these are are
+--   separate types.
 data Statement level triggerable valueReturning which where
     Explain
         :: ExplainableStatement
@@ -1639,13 +2029,13 @@ data Statement level triggerable valueReturning which where
         -> (OneOrMore IndexedColumn)
         -> Statement L0 NT NS CreateIndex'
     CreateTable
-        :: Permanence
+        :: MaybeTemporary
         -> MaybeIfNotExists
         -> SinglyQualifiedIdentifier
-        -> EitherColumnsAndConstraintsSelect
+        -> CreateTableBody
         -> Statement L0 NT NS CreateTable'
     CreateTrigger
-        :: Permanence
+        :: MaybeTemporary
         -> MaybeIfNotExists
         -> SinglyQualifiedIdentifier
         -> TriggerTime
@@ -1656,7 +2046,7 @@ data Statement level triggerable valueReturning which where
         -> (OneOrMore TriggerStatement)
         -> Statement L0 NT NS CreateTrigger'
     CreateView
-        :: Permanence
+        :: MaybeTemporary
         -> MaybeIfNotExists
         -> SinglyQualifiedIdentifier
         -> (Statement L0 T S Select')
@@ -1931,12 +2321,25 @@ instance ShowTokens (Statement l t v w) where
         = [KeywordVacuum]
 
 
+-- | A class implemented by all identifiers regardless of how many levels of
+--   qualification they allow.
 class Identifier a where
     identifierProperName :: a -> String
+    -- ^ Returns the final, "proper name" component of an identifier.  In an identifier
+    --   which names a column, this is the column name.  In an identifier which names
+    --   a table, this is the table name.  All identifiers
+    --   have this component, so it is a 'String' and not a 'Maybe'.
     identifierParentName :: a -> Maybe String
+    -- ^ Returns the "parent name" component of an identifier, if it exists.  In an
+    --   identifier which names a column, this is the table name.  In an identifier
+    --   which names a table or other database-level object, this is the database name.
     identifierGrandparentName :: a -> Maybe String
+    -- ^ Returns the "grandparent name" component of an identifier, if it exists.  In
+    --   an identifier which names a column, this is the database name.
 
 
+-- | Converts an identifier to be doubly-qualified.  This does not actually synthesize
+--   any missing components, merely provides 'Nothing' for them.
 toDoublyQualifiedIdentifier :: (Identifier a) => a -> DoublyQualifiedIdentifier
 toDoublyQualifiedIdentifier identifier =
     case (identifierGrandparentName identifier,
@@ -1951,6 +2354,8 @@ toDoublyQualifiedIdentifier identifier =
                                        properName
 
 
+-- | An identifier which does not allow any levels of qualification.  This is typically
+--   a database name.
 data UnqualifiedIdentifier = UnqualifiedIdentifier String
                              deriving (Eq, Show)
 instance Ord UnqualifiedIdentifier where
@@ -1966,6 +2371,8 @@ instance Identifier UnqualifiedIdentifier where
     identifierGrandparentName _ = Nothing
 
 
+-- | An identifier which allows a single level of qualification.  This is typically
+--   the name of a table or other database-level object.
 data SinglyQualifiedIdentifier
     = SinglyQualifiedIdentifier (Maybe String) String
       deriving (Eq, Show)
@@ -1986,6 +2393,8 @@ instance Identifier SinglyQualifiedIdentifier where
     identifierGrandparentName _ = Nothing
 
 
+-- | An identifier which allows two levels of qualification.  This is typically a
+--   column name.
 data DoublyQualifiedIdentifier
     = DoublyQualifiedIdentifier (Maybe (String, (Maybe String))) String
       deriving (Eq, Show)
@@ -2024,6 +2433,9 @@ instance Identifier DoublyQualifiedIdentifier where
     identifierGrandparentName _ = Nothing
 
 
+-- | Not an AST node but a token which corresponds to a primitive of SQL syntax.
+--   Has an instance of 'Show' which prints a list of them as syntactically-valid
+--   SQL with no line wrapping.
 data Token = EndOfInputToken
            | Identifier String
            | LiteralInteger Word64
