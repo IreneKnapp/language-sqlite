@@ -1,6 +1,7 @@
 {
 {-# LANGUAGE ExistentialQuantification, Rank2Types #-}
 module Language.SQL.SQLite.Syntax (
+                                   lexModuleArgument,
                                    ParseError,
                                    readType,
                                    readMaybeType,
@@ -31,8 +32,7 @@ module Language.SQL.SQLite.Syntax (
                                    readMaybeConstraintName,
                                    readTriggerTime,
                                    readTriggerCondition,
-                                   -- TODO remember to uncomment this
-                                   -- readModuleArgument,
+                                   readModuleArgument,
                                    readTriggerStatement,
                                    readQualifiedTableName,
                                    readOrderingTerm,
@@ -85,8 +85,7 @@ module Language.SQL.SQLite.Syntax (
                                    readCreateTable,
                                    readCreateTrigger,
                                    readCreateView,
-                                   -- TODO remember to uncomment this
-                                   -- readCreateVirtualTable,
+                                   readCreateVirtualTable,
                                    readDelete,
                                    readDeleteLimited,
                                    readDeleteOrDeleteLimited,
@@ -152,8 +151,7 @@ import Language.SQL.SQLite.Types
 %name parseMaybeConstraintName MaybeConstraintName
 %name parseTriggerTime TriggerTime
 %name parseTriggerCondition TriggerCondition
--- %name parseModuleArgument ModuleArgument
--- TODO remember to uncomment this
+%name parseModuleArgument ModuleArgument
 %name parseTriggerStatement TriggerStatement
 %name parseQualifiedTableName QualifiedTableName
 %name parseOrderingTerm OrderingTerm
@@ -206,8 +204,7 @@ import Language.SQL.SQLite.Types
 %name parseCreateTable CreateTable
 %name parseCreateTrigger CreateTrigger
 %name parseCreateView CreateView
--- %name parseCreateVirtualTable CreateVirtualTable
--- TODO remember to uncomment this
+%name parseCreateVirtualTable CreateVirtualTable
 %name parseDelete Delete
 %name parseDeleteLimited DeleteLimited
 %name parseDeleteOrDeleteLimited DeleteOrDeleteLimited
@@ -896,10 +893,22 @@ TriggerCondition :: { TriggerCondition }
     | update of OneOrMoreUnqualifiedIdentifier on
     { UpdateOn $3 }
 
--- ModuleArgument :: { ModuleArgument }
---     :
---     { }
--- TODO definition (requires monadic parser)
+ModuleArgument :: { ModuleArgument }
+    : StartModuleArgument moduleArgumentToken
+    { ModuleArgument $2 }
+
+StartModuleArgument :: { () }
+    :
+    {% do
+         state <- getParseState
+         putParseState $ state { parseStateLexingModuleArgument = True }
+    }
+
+OneOrMoreModuleArgument :: { [ModuleArgument] }
+    : ModuleArgument
+    { [$1] }
+    | OneOrMoreModuleArgument ',' ModuleArgument
+    { $1 ++ [$3] }
 
 TriggerStatement :: { TriggerStatement }
     : Update
@@ -1323,9 +1332,8 @@ Statement :: { AnyStatement }
     { Statement $1 }
     | CreateView
     { Statement $1 }
---     | CreateVirtualTable
---     { Statement $1 }
--- TODO don't forget to uncomment this
+    | CreateVirtualTable
+    { Statement $1 }
     | Delete
     { Statement $1 }
     | DeleteLimited
@@ -1378,9 +1386,8 @@ ExplainableStatement :: { ExplainableStatement }
     { ExplainableStatement $1 }
     | CreateTrigger
     { ExplainableStatement $1 }
---     | CreateVirtualTable
---     { ExplainableStatement $1 }
--- TODO don't forget to uncomment this
+    | CreateVirtualTable
+    { ExplainableStatement $1 }
     | Delete
     { ExplainableStatement $1 }
     | DeleteLimited
@@ -1464,10 +1471,14 @@ CreateView :: { CreateView }
     : create MaybeTemporary view MaybeIfNotExists SinglyQualifiedIdentifier as Select
     { CreateView $2 $4 $5 $7 }
 
--- CreateVirtualTable :: { CreateVirtualTable }
---     :
---     { }
--- TODO definition (requires monadic parser)
+CreateVirtualTable :: { CreateVirtualTable }
+    : create virtual table SinglyQualifiedIdentifier
+      using UnqualifiedIdentifier
+    { CreateVirtualTable $4 $6 [] }
+    | create virtual table SinglyQualifiedIdentifier
+      using UnqualifiedIdentifier
+      '(' OneOrMoreModuleArgument ')'
+    { CreateVirtualTable $4 $6 $8 }
 
 Delete :: { Delete }
     : delete from QualifiedTableName MaybeWhereClause
@@ -1602,7 +1613,8 @@ instance Show ParseError where
                       ++ " of SQL: " ++ (parseErrorMessage parseError)
 data ParseState = ParseState {
       parseStateInput :: String,
-      parseStateLineNumber :: Word64
+      parseStateLineNumber :: Word64,
+      parseStateLexingModuleArgument :: Bool
     }
 type Parse = ErrorT ParseError (State ParseState)
 
@@ -1739,10 +1751,8 @@ readTriggerCondition :: String -> Either ParseError TriggerCondition
 readTriggerCondition input = runParse parseTriggerCondition input
 
 
-{- TODO remember to uncomment this
 readModuleArgument :: String -> Either ParseError ModuleArgument
 readModuleArgument input = runParse parseModuleArgument input
--}
 
 
 readTriggerStatement :: String -> Either ParseError TriggerStatement
@@ -1963,10 +1973,8 @@ readCreateView :: String -> Either ParseError CreateView
 readCreateView input = runParse parseCreateView input
 
 
-{- TODO remember to uncomment this
 readCreateVirtualTable :: String -> Either ParseError CreateVirtualTable
 readCreateVirtualTable input = runParse parseCreateVirtualTable input
--}
 
 
 readDelete :: String -> Either ParseError Delete
@@ -2069,7 +2077,8 @@ runParse :: (Parse a) -> String -> Either ParseError a
 runParse parser input =
     let initialState = ParseState {
                          parseStateInput = input,
-                         parseStateLineNumber = 1
+                         parseStateLineNumber = 1,
+                         parseStateLexingModuleArgument = False
                        }
     in evalState (runErrorT parser) initialState
 
@@ -2077,7 +2086,9 @@ runParse parser input =
 lexerTakingContinuation :: (Token -> Parse a) -> Parse a
 lexerTakingContinuation continuation = do
   state <- getParseState
-  (token, rest) <- lexer $ parseStateInput state
+  (token, rest) <- case parseStateLexingModuleArgument state of
+                     False -> lexer $ parseStateInput state
+                     True -> lexModuleArgument $ parseStateInput state
   state <- getParseState
   putParseState $ state { parseStateInput = rest }
   continuation token
@@ -2355,5 +2366,29 @@ readNumericLiteral input =
 readIdentifierOrKeyword :: String -> (String, String)
 readIdentifierOrKeyword input
     = span (\c -> (isAlphaNum c) || (elem c "_$")) input
+
+
+lexModuleArgument :: String -> Parse (Token, String)
+lexModuleArgument input = do
+  let readAtParenthesisDepth _ []
+          = throwParseError $ "Unexpected end of input in module argument."
+      readAtParenthesisDepth 0 (',':rest) = return (",", rest)
+      readAtParenthesisDepth 0 (')':rest)
+          = throwParseError $ "Unbalanced right parenthesis in module argument."
+      readAtParenthesisDepth 0 (c:rest) = do
+        (result, rest) <- readAtParenthesisDepth 0 rest
+        return ([c] ++ result, rest)
+      readAtParenthesisDepth depth ('(':rest) = do
+        (result1, rest) <- readAtParenthesisDepth (depth + 1) rest
+        (result2, rest) <- readAtParenthesisDepth depth rest
+        return ("(" ++ result1 ++ result2, rest)
+      readAtParenthesisDepth depth (')':rest) = return (")", rest)
+      readAtParenthesisDepth depth (c:rest) = do
+        (result, rest) <- readAtParenthesisDepth depth rest
+        return ([c] ++ result, rest)
+  (result, rest) <- readAtParenthesisDepth 0 input
+  state <- getParseState
+  putParseState $ state { parseStateLexingModuleArgument = False }
+  return (ModuleArgumentToken result, rest)
 
 }
