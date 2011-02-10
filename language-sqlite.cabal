@@ -1,6 +1,6 @@
 name: language-sqlite
 version: 1.0
-cabal-version: >= 1.2
+cabal-version: >= 1.6
 build-type: Simple
 license: BSD3
 license-file: LICENSE
@@ -15,6 +15,10 @@ description:
   This is a full parser and generator for SQL as implemented by SQLite3.
   It is well-typed in the sense that it is possible to construct an
   abstract syntax tree if and only if it corresponds to valid SQL.
+
+Source-Repository head
+  type: darcs
+  location: http://dankna.com/software/darcs/language-sqlite/
 
 Library
   exposed-modules: Language.SQL.SQLite,
