@@ -244,7 +244,7 @@ import Language.SQL.SQLite.Types
 %left LOOSER_THAN_ADDITIVE
 %left '+' '-'
 %left '*' '/' '%'
-%left '|'
+%left '||'
 %left LOOSER_THAN_COLLATE
 %left collate
 %right '~'
