@@ -234,19 +234,26 @@ import Language.SQL.SQLite.Types
 %error { parseError }
 
 %left or
+%left TIGHTER_THAN_OR
 %left and
-%left LOOSER_THAN_NOT
+%left TIGHTER_THAN_AND
 %right not
+%left TIGHTER_THAN_NOT
 %left is match like glob regexp between in isnull notnull '!=' '<>' '=' '=='
+%left TIGHTER_THAN_EQUALITY
 %left '>' '>=' '<' '<='
+%left TIGHTER_THAN_COMPARISON
 %right escape
 %left '&' '|' '<<' '>>'
-%left LOOSER_THAN_ADDITIVE
+%left TIGHTER_THAN_BITWISE
 %left '+' '-'
+%left TIGHTER_THAN_ADDITIVE
 %left '*' '/' '%'
+%left TIGHTER_THAN_MULTIPLICATIVE
 %left '||'
-%left LOOSER_THAN_COLLATE
+%left TIGHTER_THAN_CONCATENATION
 %left collate
+%left TIGHTER_THAN_COLLATE
 %right '~'
 
 %left LOOSER_THAN_DOT
@@ -454,7 +461,7 @@ LikeType :: { LikeType }
     { NotMatch }
 
 Escape :: { Escape }
-    :
+    : %prec TIGHTER_THAN_NOT
     { NoEscape }
     | escape Expression
     { Escape $2 }
@@ -514,7 +521,7 @@ Expression2 :: { Expression }
     { ExpressionCollate $1 $3 }
 
 Expression3 :: { Expression }
-    : Expression2 %prec LOOSER_THAN_COLLATE
+    : Expression2 %prec TIGHTER_THAN_COLLATE
     { $1 }
     | case MaybeSwitchExpression CaseList Else end
     { ExpressionCase $2 (fromJust $ mkOneOrMore $3) $4 }
@@ -538,13 +545,13 @@ Expression5 :: { Expression }
     { ExpressionNotInTable $1 $4 }
 
 Expression6 :: { Expression }
-    : Expression5 %prec LOOSER_THAN_NOT
+    : Expression5 %prec TIGHTER_THAN_AND
     { $1 }
     | '(' Select ')'
     { ExpressionSubquery $2 }
 
 Expression7 :: { Expression }
-    : Expression6
+    : Expression6 %prec TIGHTER_THAN_AND
     { $1 }
     | Expression7 between Expression17 and Expression6
     { ExpressionBetween $1 $3 $5 }
@@ -552,7 +559,7 @@ Expression7 :: { Expression }
     { ExpressionNotBetween $1 $4 $6 }
 
 Expression8 :: { Expression }
-    : Expression7 %prec LOOSER_THAN_NOT
+    : Expression7 %prec TIGHTER_THAN_AND
     { $1 }
     | '-' Expression8
     { ExpressionUnaryNegative $2 }
@@ -566,7 +573,7 @@ Expression8 :: { Expression }
         subexpression -> ExpressionUnaryLogicalNot subexpression }
 
 Expression9 :: { Expression }
-    : Expression8
+    : Expression8 %prec TIGHTER_THAN_NOT
     { $1 }
     | Expression9 is Expression8
     { case $3 of
@@ -574,7 +581,7 @@ Expression9 :: { Expression }
         _ -> ExpressionIs $1 $3 }
 
 Expression10 :: { Expression }
-    : Expression9
+    : Expression9 %prec TIGHTER_THAN_EQUALITY
     { $1 }
     | Expression10 isnull
     { ExpressionIsnull $1 }
@@ -584,19 +591,19 @@ Expression10 :: { Expression }
     { ExpressionNotNull $1 }
 
 Expression11 :: { Expression }
-    : Expression10 %prec LOOSER_THAN_NOT
+    : Expression10 %prec TIGHTER_THAN_NOT
     { $1 }
-    | Expression11 LikeType Expression10 Escape %prec LOOSER_THAN_NOT
+    | Expression11 LikeType Expression10 Escape
     { ExpressionLike $1 $2 $3 $4 }
 
 Expression12 :: { Expression }
-    : Expression11 %prec LOOSER_THAN_NOT
+    : Expression11 %prec TIGHTER_THAN_NOT
     { $1 }
-    | Expression12 '||' Expression11 %prec LOOSER_THAN_NOT
+    | Expression12 '||' Expression11
     { ExpressionBinaryConcatenate $1 $3 }
 
 Expression13 :: { Expression }
-    : Expression12
+    : Expression12 %prec TIGHTER_THAN_CONCATENATION
     { $1 }
     | Expression13 '*' Expression12
     { ExpressionBinaryMultiply $1 $3 }
@@ -606,7 +613,7 @@ Expression13 :: { Expression }
     { ExpressionBinaryModulus $1 $3 }
 
 Expression14 :: { Expression }
-    : Expression13
+    : Expression13 %prec TIGHTER_THAN_MULTIPLICATIVE
     { $1 }
     | Expression14 '+' Expression13
     { ExpressionBinaryAdd $1 $3 }
@@ -614,7 +621,7 @@ Expression14 :: { Expression }
     { ExpressionBinarySubtract $1 $3 }
 
 Expression15 :: { Expression }
-    : Expression14 %prec LOOSER_THAN_ADDITIVE
+    : Expression14 %prec TIGHTER_THAN_ADDITIVE
     { $1 }
     | Expression15 '<<' Expression14
     { ExpressionBinaryLeftShift $1 $3 }
@@ -626,7 +633,7 @@ Expression15 :: { Expression }
     { ExpressionBinaryBitwiseOr $1 $3 }
 
 Expression16 :: { Expression }
-    : Expression15
+    : Expression15 %prec TIGHTER_THAN_BITWISE
     { $1 }
     | Expression16 '<' Expression15
     { ExpressionBinaryLess $1 $3 }
@@ -638,7 +645,7 @@ Expression16 :: { Expression }
     { ExpressionBinaryGreaterEquals $1 $3 }
 
 Expression17 :: { Expression }
-    : Expression16
+    : Expression16 %prec TIGHTER_THAN_COMPARISON
     { $1 }
     | Expression17 '=' Expression16
     { ExpressionBinaryEquals $1 $3 }
@@ -654,19 +661,19 @@ Expression17 :: { Expression }
     { ExpressionNotInList $1 $5 }
 
 Expression18 :: { Expression }
-    : Expression17 %prec LOOSER_THAN_NOT
+    : Expression17 %prec TIGHTER_THAN_EQUALITY
     { $1 }
     | Expression18 and Expression17
     { ExpressionBinaryLogicalAnd $1 $3 }
 
 Expression19 :: { Expression }
-    : Expression18
+    : Expression18 %prec TIGHTER_THAN_AND
     { $1 }
     | Expression19 or Expression18
     { ExpressionBinaryLogicalOr $1 $3 }
 
 Expression :: { Expression }
-    : Expression19
+    : Expression19 %prec TIGHTER_THAN_OR
     { $1 }
 
 ExpressionList :: { [Expression] }
@@ -1240,7 +1247,7 @@ ForeignKeyClauseActionPart :: { ForeignKeyClauseActionPart }
     { NoAction }
 
 MaybeForeignKeyClauseDeferrablePart :: { MaybeForeignKeyClauseDeferrablePart }
-    : %prec LOOSER_THAN_NOT
+    : %prec TIGHTER_THAN_NOT
     { NoDeferrablePart }
     | deferrable MaybeInitialDeferralStatus
     { Deferrable $2 }
