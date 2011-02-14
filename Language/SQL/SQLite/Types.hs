@@ -9,6 +9,8 @@ module Language.SQL.SQLite.Types (
                                   NonnegativeDouble,
                                   mkNonnegativeDouble,
                                   fromNonnegativeDouble,
+                                  computeTypeNameAffinity,
+                                  computeAffinityTypeName,
                                   Identifier(..),
                                   toDoublyQualifiedIdentifier,
                                   UnqualifiedIdentifier(..),
@@ -117,6 +119,7 @@ module Language.SQL.SQLite.Types (
                                   MaybeTransaction(..),
                                   MaybeTransactionType(..),
                                   MaybeType(..),
+                                  MaybeTypeName(..),
                                   MaybeTypeSize(..),
                                   MaybeUnique(..),
                                   ModuleArgument(..),
@@ -133,6 +136,7 @@ module Language.SQL.SQLite.Types (
                                   TriggerCondition(..),
                                   TriggerTime(..),
                                   Type(..),
+                                  TypeAffinity(..),
                                   TypeSizeField(..),
                                   UpdateHead(..),
                                   WhenClause(..),
@@ -206,8 +210,8 @@ data OneOrMore a = MkOneOrMore [a]
 instance (Show a) => Show (OneOrMore a) where
     show (MkOneOrMore list) = "1" ++ show list
 
--- | The constructor for 'OneOrMore' @a@.  Returns 'Nothing' if the list it's given
---   is empty, or 'Just' 'OneOrMore' @a@ if it is not.
+-- | The constructor for 'OneOrMore' @a@.  Returns 'Nothing' if the list it's
+--   given is empty, or 'Just' 'OneOrMore' @a@ if it is not.
 mkOneOrMore :: [a] -> Maybe (OneOrMore a)
 mkOneOrMore [] = Nothing
 mkOneOrMore list = Just $ MkOneOrMore list
@@ -239,15 +243,83 @@ mkNonnegativeDouble double =
 fromNonnegativeDouble :: NonnegativeDouble -> Double
 fromNonnegativeDouble (MkNonnegativeDouble double) = double
 
--- | The AST node corresponding to a column or value type.  Used by 'MaybeType' which
---   is used by 'ColumnDefinition', and by 'ExpressionCast'.
-data Type = Type UnqualifiedIdentifier
+-- | Computes a 'TypeAffinity' from a 'MaybeTypeName', as used in
+--   'Type'.
+computeTypeNameAffinity :: MaybeTypeName -> TypeAffinity
+computeTypeNameAffinity NoTypeName = TypeAffinityNone
+computeTypeNameAffinity (TypeName oneOrMoreIdentifier) =
+  let identifiers = fromOneOrMore oneOrMoreIdentifier
+      containsString string =
+        foldl (\result (UnqualifiedIdentifier identifier) ->
+                 if result
+                   then result
+                   else isInfixOf string $ map toUpper identifier)
+              False
+              identifiers
+  in if containsString "INT"
+       then TypeAffinityInteger
+       else if containsString "CHAR"
+               || containsString "CLOB"
+               || containsString "TEXT"
+              then TypeAffinityText
+              else if containsString "BLOB"
+                     then TypeAffinityNone
+                     else if containsString "REAL"
+                             || containsString "FLOA"
+                             || containsString "DOUB"
+                            then TypeAffinityReal
+                            else TypeAffinityNumeric
+
+
+-- | Computes a 'MaybeTypeName' from a 'TypeAffinity', as used in
+--   'Type'.
+computeAffinityTypeName :: TypeAffinity -> MaybeTypeName
+computeAffinityTypeName TypeAffinityText
+  = TypeName $ MkOneOrMore [UnqualifiedIdentifier "TEXT"]
+computeAffinityTypeName TypeAffinityNumeric
+  = TypeName $ MkOneOrMore [UnqualifiedIdentifier "NUMERIC"]
+computeAffinityTypeName TypeAffinityInteger
+  = TypeName $ MkOneOrMore [UnqualifiedIdentifier "INTEGER"]
+computeAffinityTypeName TypeAffinityReal
+  = TypeName $ MkOneOrMore [UnqualifiedIdentifier "REAL"]
+computeAffinityTypeName TypeAffinityNone
+  = NoTypeName
+
+
+-- | The AST node corresponding to a column or value type.  Used by
+--   'MaybeType' which is used by 'ColumnDefinition', and by 'ExpressionCast'.
+data Type = Type TypeAffinity
+                 MaybeTypeName
                  MaybeTypeSize
             deriving (Eq, Show)
 instance ShowTokens Type where
-    showTokens (Type name maybeTypeSize)
-        = showTokens name
+    showTokens (Type affinity name maybeTypeSize)
+        = (case name of
+            NoTypeName -> showTokens affinity
+            _ -> showTokens name)
           ++ showTokens maybeTypeSize
+
+
+-- | The AST node corresponding to the affinity of a column or value type.
+--   Used by 'Type'.
+data TypeAffinity = TypeAffinityText
+                  | TypeAffinityNumeric
+                  | TypeAffinityInteger
+                  | TypeAffinityReal
+                  | TypeAffinityNone
+                    deriving (Eq, Show)
+instance ShowTokens TypeAffinity where
+    showTokens affinity = showTokens $ computeAffinityTypeName affinity
+
+
+data MaybeTypeName = NoTypeName
+                   | TypeName (OneOrMore UnqualifiedIdentifier)
+                     deriving (Eq, Show)
+instance ShowTokens MaybeTypeName where
+    showTokens NoTypeName = []
+    showTokens (TypeName identifiers) =
+      concat $ mapOneOrMore showTokens identifiers
+
 
 -- | The AST node corresponding to an optional column type.  Used by 'ColumnDefinition'.
 data MaybeType = NoType

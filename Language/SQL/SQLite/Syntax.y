@@ -5,6 +5,7 @@ module Language.SQL.SQLite.Syntax (
                                    ParseError,
                                    readType,
                                    readMaybeType,
+                                   readMaybeTypeName,
                                    readMaybeTypeSize,
                                    readTypeSizeField,
                                    readLikeType,
@@ -124,6 +125,7 @@ import Language.SQL.SQLite.Types
 
 %name parseType Type
 %name parseMaybeType MaybeType
+%name parseMaybeTypeName MaybeTypeName
 %name parseMaybeTypeSize MaybeTypeSize
 %name parseTypeSizeField TypeSizeField
 %name parseLikeType LikeType
@@ -419,8 +421,24 @@ import Language.SQL.SQLite.Types
 %%
 
 Type :: { Type }
-    : UnqualifiedIdentifier MaybeTypeSize
-    { Type $1 $2 }
+    : TypeName MaybeTypeSize
+    { Type (computeTypeNameAffinity $1) $1 $2 }
+
+TypeName :: { MaybeTypeName }
+    : OneOrMoreTypeName
+    { TypeName $ fromJust $ mkOneOrMore $1 }
+
+OneOrMoreTypeName :: { [UnqualifiedIdentifier] }
+    : OneOrMoreTypeName UnqualifiedIdentifier
+    { $1 ++ [$2] }
+    | UnqualifiedIdentifier
+    { [$1] }
+
+MaybeTypeName :: { MaybeTypeName }
+    :
+    { NoTypeName }
+    | TypeName
+    { $1 }
 
 MaybeType :: { MaybeType }
     :
@@ -1648,6 +1666,10 @@ readType input = runParse parseType input
 
 readMaybeType :: String -> Either ParseError MaybeType
 readMaybeType input = runParse parseMaybeType input
+
+
+readMaybeTypeName :: String -> Either ParseError MaybeTypeName
+readMaybeTypeName input = runParse parseMaybeTypeName input
 
 
 readMaybeTypeSize :: String -> Either ParseError MaybeTypeSize
